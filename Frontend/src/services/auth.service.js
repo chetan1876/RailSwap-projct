@@ -1,11 +1,19 @@
 import axios from "axios";
 
 /* =====================================================
-                    AXIOS INSTANCE
+   API BASE URL
+===================================================== */
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
+
+/* =====================================================
+   AXIOS INSTANCE
 ===================================================== */
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api/auth",
+  baseURL: `${API_URL}/api/auth`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -13,7 +21,7 @@ const API = axios.create({
 });
 
 /* =====================================================
-                REQUEST INTERCEPTOR
+   REQUEST INTERCEPTOR
 ===================================================== */
 
 API.interceptors.request.use(
@@ -30,136 +38,82 @@ API.interceptors.request.use(
 );
 
 /* =====================================================
-                RESPONSE INTERCEPTOR
+   RESPONSE INTERCEPTOR
 ===================================================== */
 
 API.interceptors.response.use(
   (response) => response,
-  (error) => {
-    return Promise.reject(
-      error.response?.data || error
-    );
-  }
+  (error) => Promise.reject(error.response?.data || error)
 );
 
 /* =====================================================
-                    AUTH API
+   AUTH API
 ===================================================== */
 
 export const authAPI = {
-  /* ---------------- Register ---------------- */
-
+  // Register
   register: async (userData) => {
-    const response = await API.post(
-      "/register",
-      userData
-    );
-
+    const response = await API.post("/register", userData);
     return response.data;
   },
 
-  /* ---------------- Verify OTP ---------------- */
-
+  // Verify OTP
   verifyOtp: async (otpData) => {
-    const response = await API.post(
-      "/verify-otp",
-      otpData
-    );
-
+    const response = await API.post("/verify-otp", otpData);
     return response.data;
   },
 
-  /* ---------------- Resend OTP ---------------- */
-
+  // Resend OTP
   resendOtp: async (emailData) => {
-    const response = await API.post(
-      "/resend-otp",
-      emailData
-    );
-
+    const response = await API.post("/resend-otp", emailData);
     return response.data;
   },
 
-
-    /* ---------------- Forgot Password ---------------- */
-
+  // Forgot Password
   forgotPassword: async (emailData) => {
-    const response = await API.post(
-      "/forgot-password",
-      emailData
-    );
-
+    const response = await API.post("/forgot-password", emailData);
     return response.data;
   },
 
-  /* ---------------- Verify Reset OTP ---------------- */
-
+  // Verify Reset OTP
   verifyResetOtp: async (otpData) => {
-    const response = await API.post(
-      "/verify-reset-otp",
-      otpData
-    );
-
+    const response = await API.post("/verify-reset-otp", otpData);
     return response.data;
   },
 
-  /* ---------------- Reset Password ---------------- */
-
+  // Reset Password
   resetPassword: async (resetData) => {
-    const response = await API.post(
-      "/reset-password",
-      resetData
-    );
-
+    const response = await API.post("/reset-password", resetData);
     return response.data;
   },
 
-  /* ---------------- Login ---------------- */
-
+  // Login
   login: async (loginData) => {
-    const response = await API.post(
-      "/login",
-      loginData
-    );
-
+    const response = await API.post("/login", loginData);
     return response.data;
   },
 
-  /* ---------------- Google Login ---------------- */
-
-googleLogin: async (idToken) => {
-
-  const response = await API.post(
-    "/google",
-    {
+  // Google Login
+  googleLogin: async (idToken) => {
+    const response = await API.post("/google", {
       idToken,
-    }
-  );
-
-  return response.data;
-
-},
-
-  /* ---------------- Refresh Token ---------------- */
-
-  refreshToken: async (refreshToken) => {
-    const response = await API.post(
-      "/refresh-token",
-      {
-        refreshToken,
-      }
-    );
+    });
 
     return response.data;
   },
 
-  /* ---------------- Logout ---------------- */
+  // Refresh Token
+  refreshToken: async (refreshToken) => {
+    const response = await API.post("/refresh-token", {
+      refreshToken,
+    });
 
+    return response.data;
+  },
+
+  // Logout
   logout: async () => {
-    const response = await API.post(
-      "/logout"
-    );
-
+    const response = await API.post("/logout");
     return response.data;
   },
 };

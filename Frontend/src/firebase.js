@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app";
-
 import {
   getMessaging,
   getToken,
@@ -27,6 +26,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // =====================================================
+// API URL
+// =====================================================
+
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+// =====================================================
 // FIREBASE MESSAGING
 // =====================================================
 
@@ -40,7 +46,6 @@ const initializeMessaging = async () => {
       console.warn(
         "Firebase Messaging is not supported in this browser."
       );
-
       return null;
     }
 
@@ -54,7 +59,6 @@ const initializeMessaging = async () => {
       "Firebase Messaging Initialization Error:",
       error
     );
-
     return null;
   }
 };
@@ -63,22 +67,17 @@ const initializeMessaging = async () => {
 // SAVE FCM TOKEN TO BACKEND
 // =====================================================
 
-const saveTokenToBackend = async (
-  userId,
-  fcmToken
-) => {
+const saveTokenToBackend = async (userId, fcmToken) => {
   try {
     const response = await fetch(
-      "http://localhost:5000/api/notifications/save-token",
+      `${API_URL}/api/notifications/save-token`,
       {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
-          userId: userId,
+          userId,
           token: fcmToken,
         }),
       }
@@ -88,23 +87,15 @@ const saveTokenToBackend = async (
 
     if (!response.ok) {
       throw new Error(
-        data.message ||
-          "Failed to save FCM token"
+        data.message || "Failed to save FCM token"
       );
     }
 
-    console.log(
-      "✅ FCM Token saved to backend:",
-      data
-    );
+    console.log("✅ FCM Token saved:", data);
 
     return data;
   } catch (error) {
-    console.error(
-      "❌ Save FCM Token Error:",
-      error
-    );
-
+    console.error("❌ Save FCM Token Error:", error);
     return null;
   }
 };
@@ -117,16 +108,13 @@ export const requestNotificationPermission = async (
   userId = "user123"
 ) => {
   try {
-    // Check browser support
     if (!("Notification" in window)) {
       console.warn(
         "This browser does not support notifications."
       );
-
       return null;
     }
 
-    // Request notification permission
     const permission =
       await Notification.requestPermission();
 
@@ -139,11 +127,9 @@ export const requestNotificationPermission = async (
       console.warn(
         "Notification permission was not granted."
       );
-
       return null;
     }
 
-    // Initialize Firebase Messaging
     const messagingInstance =
       await initializeMessaging();
 
@@ -151,7 +137,6 @@ export const requestNotificationPermission = async (
       return null;
     }
 
-    // Get FCM Token
     const fcmToken = await getToken(
       messagingInstance,
       {
@@ -164,7 +149,6 @@ export const requestNotificationPermission = async (
       console.warn(
         "FCM Token could not be generated."
       );
-
       return null;
     }
 
@@ -173,19 +157,11 @@ export const requestNotificationPermission = async (
       fcmToken
     );
 
-    // Save FCM Token to Backend
-    await saveTokenToBackend(
-      userId,
-      fcmToken
-    );
+    await saveTokenToBackend(userId, fcmToken);
 
     return fcmToken;
   } catch (error) {
-    console.error(
-      "❌ FCM Token Error:",
-      error
-    );
-
+    console.error("❌ FCM Token Error:", error);
     return null;
   }
 };
@@ -225,7 +201,6 @@ export const listenForMessages = async (
       "❌ Foreground Message Error:",
       error
     );
-
     return () => {};
   }
 };
