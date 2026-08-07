@@ -1,0 +1,10 @@
+node_modules
+backend/package-lock.json
+backend/package-lock.json
+config/firebase-service-account.json
+backend/config/firebase-service-account.json
+.env
+backend/.env
+backend/config/firebase-service-account.json
+backend/config/serviceAccountKey.json
+backend/config/serviceAccountKey.json
