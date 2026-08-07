@@ -1,0 +1,604 @@
+/* ==========================================
+   RailSwap - Lost & Found Theme Styles
+========================================== */
+
+.lost-page {
+  padding: 24px;
+  background: linear-gradient(to bottom, #f8fafc, #edf2f7);
+  min-height: 100vh;
+  font-family: inherit;
+}
+
+/* Header */
+.lost-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.lost-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.lost-header p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* Tabs */
+.tab-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.tab-btn {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease-in-out;
+}
+
+.tab-btn:hover {
+  background: #f1f5f9;
+  color: #2563eb;
+}
+
+.tab-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+/* Alerts */
+.alert {
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  font-size: 14px;
+  position: relative;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.alert-success {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+.close-alert {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* PNR Card */
+.pnr-card, .form-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.pnr-card-header h2, .form-card h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pnr-card-header p {
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.pnr-input-group {
+  display: flex;
+  gap: 12px;
+  max-width: 650px;
+}
+
+.rounded-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 14px;
+  color: #1e293b;
+  transition: all 0.2s ease-in-out;
+  outline: none;
+}
+
+.rounded-input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.rounded-input.readonly-input, .rounded-input:disabled {
+  background: #e2e8f0;
+  color: #475569;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Journey Details Box (Read only) */
+.journey-details-box {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f1f5f9;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.journey-details-box h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.detail-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.detail-item input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+/* Form Styles */
+.lost-item-form {
+  margin-top: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.form-group label.required::after {
+  content: " *";
+  color: #dc2626;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+textarea.rounded-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Upload section */
+.upload-section {
+  border: 2px dashed #cbd5e1;
+  padding: 20px;
+  border-radius: 16px;
+  background: #fafafa;
+  text-align: center;
+}
+
+.file-upload-wrapper {
+  margin-top: 8px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #2563eb;
+  transition: all 0.2s ease;
+}
+
+.file-label:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+}
+
+.image-preview-box {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.preview-img {
+  max-width: 240px;
+  max-height: 180px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid #e2e8f0;
+  margin-top: 8px;
+}
+
+.remove-img-btn {
+  display: block;
+  margin: 8px auto 0;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.form-actions {
+  margin-top: 24px;
+  text-align: right;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+}
+
+/* My Lost Items Tab */
+.my-items-container {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+}
+
+.my-items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.my-items-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.refresh-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.item-card-full {
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.item-card-full:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+}
+
+.item-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.category-pill {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #2563eb;
+  background: #dbeafe;
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.item-card-header h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.item-img-wrap {
+  width: 100%;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.item-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.item-desc {
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-found {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-verified {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.status-returned {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* Status Progression Buttons */
+.item-card-footer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 14px;
+}
+
+.flow-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.status-flow-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.flow-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.flow-btn:hover {
+  background: #f1f5f9;
+  color: #2563eb;
+}
+
+.flow-btn.current {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.arrow-icon {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* Empty & Loading states */
+.empty-box, .loading-box {
+  text-align: center;
+  padding: 48px 20px;
+  color: #64748b;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #cbd5e1;
+  margin-bottom: 16px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner.large {
+  width: 32px;
+  height: 32px;
+  border-color: rgba(37, 99, 235, 0.2);
+  border-top-color: #2563eb;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .lost-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pnr-input-group {
+    flex-direction: column;
+  }
+
+  .items-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-flow-buttons {
+    gap: 6px;
+  }
+}

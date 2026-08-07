@@ -1,0 +1,409 @@
+/* =========================
+   SETTINGS PAGE
+========================= */
+
+.settings-page{
+  padding:30px;
+  background:#f8fafc;
+  min-height:100vh;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.page-header{
+  margin-bottom:30px;
+}
+
+.page-header h1{
+  font-size:38px;
+  font-weight:800;
+  color:#111827;
+  margin-bottom:10px;
+}
+
+.page-header p{
+  color:#6b7280;
+  font-size:16px;
+}
+
+/* =========================
+   GRID
+========================= */
+
+.settings-grid{
+  display:grid;
+  grid-template-columns:
+  repeat(auto-fit,minmax(360px,1fr));
+
+  gap:24px;
+}
+
+/* =========================
+   CARD
+========================= */
+
+.setting-card{
+  background:#ffffff;
+
+  border:1px solid #e5e7eb;
+
+  border-radius:24px;
+
+  padding:24px;
+
+  transition:.35s ease;
+
+  box-shadow:
+  0 10px 30px rgba(0,0,0,.04);
+
+  position:relative;
+
+  overflow:hidden;
+}
+
+.setting-card::before{
+  content:"";
+
+  position:absolute;
+
+  top:0;
+  left:0;
+
+  width:100%;
+  height:4px;
+
+  background:
+  linear-gradient(
+  90deg,
+  #2563eb,
+  #3b82f6
+  );
+
+  transform:scaleX(0);
+
+  transition:.35s;
+}
+
+.setting-card:hover{
+  transform:translateY(-6px);
+
+  box-shadow:
+  0 20px 40px rgba(37,99,235,.12);
+}
+
+.setting-card:hover::before{
+  transform:scaleX(1);
+}
+
+.setting-card h3{
+  color:#111827;
+  font-size:20px;
+  margin-bottom:20px;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.setting-card button{
+  width:100%;
+
+  margin-top:10px;
+
+  border:none;
+
+  background:#eff6ff;
+
+  color:#2563eb;
+
+  padding:14px;
+
+  border-radius:14px;
+
+  font-weight:600;
+
+  cursor:pointer;
+
+  transition:.3s;
+}
+
+.setting-card button:hover{
+  background:#2563eb;
+  color:white;
+}
+
+/* =========================
+   TOGGLES
+========================= */
+
+.toggle-row{
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:center;
+
+  padding:14px 0;
+
+  border-bottom:
+  1px solid #f1f5f9;
+}
+
+.toggle-row:last-child{
+  border-bottom:none;
+}
+
+.toggle-row span{
+  color:#374151;
+  font-weight:500;
+}
+
+.toggle-row input{
+  width:20px;
+  height:20px;
+  cursor:pointer;
+}
+
+/* =========================
+   SELECT
+========================= */
+
+.setting-card select{
+  width:100%;
+
+  margin-top:15px;
+
+  padding:14px;
+
+  border-radius:14px;
+
+  border:1px solid #d1d5db;
+
+  background:white;
+
+  font-size:15px;
+}
+
+.setting-card select:focus{
+  outline:none;
+
+  border-color:#2563eb;
+}
+
+/* =========================
+   DEVICES
+========================= */
+
+.device-row{
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:center;
+
+  padding:14px 0;
+
+  border-bottom:
+  1px solid #f1f5f9;
+}
+
+.device-row:last-child{
+  border-bottom:none;
+}
+
+.device-row strong{
+  color:#16a34a;
+}
+
+/* =========================
+   LISTS
+========================= */
+
+.setting-card ul{
+  padding-left:20px;
+}
+
+.setting-card li{
+  margin-bottom:12px;
+  color:#374151;
+}
+
+/* =========================
+   LOGOUT BUTTON
+========================= */
+
+.logout-btn{
+  background:#fee2e2 !important;
+  color:#dc2626 !important;
+}
+
+.logout-btn:hover{
+  background:#dc2626 !important;
+  color:white !important;
+}
+
+/* =========================
+   MODAL
+========================= */
+
+.modal-overlay{
+  position:fixed;
+
+  inset:0;
+
+  background:
+  rgba(15,23,42,.55);
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:center;
+
+  z-index:9999;
+
+  backdrop-filter:blur(6px);
+}
+
+.modal{
+  width:450px;
+
+  background:white;
+
+  border-radius:28px;
+
+  padding:30px;
+
+  box-shadow:
+  0 30px 60px rgba(0,0,0,.2);
+
+  animation:
+  modalShow .3s ease;
+}
+
+@keyframes modalShow{
+
+  from{
+    opacity:0;
+    transform:translateY(30px);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+
+}
+
+.modal h2{
+  margin-bottom:20px;
+  color:#111827;
+}
+
+.modal p{
+  color:#6b7280;
+  margin-bottom:20px;
+}
+
+.modal input{
+  width:100%;
+
+  padding:14px;
+
+  margin-bottom:15px;
+
+  border-radius:12px;
+
+  border:1px solid #d1d5db;
+}
+
+.modal input:focus{
+  outline:none;
+  border-color:#2563eb;
+}
+
+.modal button{
+  width:100%;
+
+  border:none;
+
+  padding:14px;
+
+  border-radius:12px;
+
+  cursor:pointer;
+
+  margin-top:10px;
+
+  background:#2563eb;
+  color:white;
+}
+
+.modal button:hover{
+  background:#1d4ed8;
+}
+
+/* =========================
+   REWARD SECTION
+========================= */
+
+.reward-box{
+  background:#f8fafc;
+
+  border-radius:16px;
+
+  padding:18px;
+
+  margin-top:12px;
+}
+
+.reward-box strong{
+  color:#2563eb;
+}
+
+/* =========================
+   ABOUT LINKS
+========================= */
+
+.about-link{
+  padding:14px 0;
+
+  border-bottom:
+  1px solid #f1f5f9;
+
+  cursor:pointer;
+
+  transition:.3s;
+}
+
+.about-link:hover{
+  color:#2563eb;
+  padding-left:8px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:768px){
+
+.settings-page{
+padding:18px;
+}
+
+.settings-grid{
+grid-template-columns:1fr;
+}
+
+.page-header h1{
+font-size:30px;
+}
+
+.modal{
+width:95%;
+padding:22px;
+}
+
+}
