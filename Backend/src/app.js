@@ -28,14 +28,34 @@ const app = express();
 
 app.use(helmet());
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "https://rail-swap-project.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-    ],
+    origin: function (origin, callback) {
+      // Postman ya server-to-server requests ke liye
+      if (!origin) return callback(null, true);
+
+      // Exact match
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Vercel preview deployments allow
+      if (origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+
     credentials: true,
+
     methods: [
       "GET",
       "POST",
@@ -44,6 +64,7 @@ app.use(
       "DELETE",
       "OPTIONS",
     ],
+
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -95,8 +116,6 @@ app.use("/api/journey", journeyRoutes);
 app.use("/api/crowd-prediction", crowdPredictionRoutes);
 
 app.use("/api/lost-items", lostItemRoutes);
-
-
 
 /* =====================================================
                     404 HANDLER
