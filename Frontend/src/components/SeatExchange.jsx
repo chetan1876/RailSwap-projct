@@ -10,6 +10,7 @@ import {
   cancelSeatExchange,
   getPaymentHistory,
 } from "../services/seatExchange.service";
+import api from "../services/api";
 
 import {
   requestNotificationPermission,
@@ -42,16 +43,15 @@ const SeatExchange = () => {
   // Receipt Modal State
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
+  // Structured Review Packet State
+  const [reviewPacket, setReviewPacket] = useState(null);
+  const [reviewPacketRequest, setReviewPacketRequest] = useState(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+
   // Filter State
   const [coachFilter, setCoachFilter] = useState("ALL");
   const [berthFilter, setBerthFilter] = useState("ALL");
-  const [statusFilter, setStatusFilter] = useState("ALL"); // 'ALL' | 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'CANCELLED'
-
-  // Editable Notes & Status Tag State
-  const [editingRecordId, setEditingRecordId] = useState(null);
-  const [editNotes, setEditNotes] = useState("");
-  const [editStatusTag, setEditStatusTag] = useState("PENDING");
-  const [editSuccessMsg, setEditSuccessMsg] = useState("");
 
   // =====================================================
   // FIREBASE NOTIFICATIONS
@@ -147,7 +147,7 @@ const SeatExchange = () => {
       const res = await acceptSeatExchange(requestId, targetUserId || "user123");
       const updatedItem = res.data;
 
-      setMessage("🎉 Seat Exchange Confirmed! Paytm Payment Screen has been unlocked for the requester.");
+      setMessage("🎉 Seat Exchange Confirmed! Give Reward option has been unlocked for the requester.");
 
       // Update state locally
       setRequests((prev) =>
@@ -165,7 +165,7 @@ const SeatExchange = () => {
   };
 
   // =====================================================
-  // REQUESTER PAYS ₹50 VIA PAYTM AFTER ACCEPTANCE
+  // REQUESTER GIVES REWARD VIA PAYTM AFTER ACCEPTANCE
   // =====================================================
   const handlePaytmPayment = async () => {
     if (!unlockedPaymentRequest) return;
@@ -180,7 +180,7 @@ const SeatExchange = () => {
         paymentMethod: "PAYTM",
       });
 
-      setMessage(`✅ Paytm Payment of ₹50 Successful! (Txn ID: ${res.transactionId}). Exchange Completed!`);
+      setMessage(`✅ Reward processed successfully! (Txn ID: ${res.transactionId}). Exchange Completed!`);
       setShowPaytmModal(false);
       setUnlockedPaymentRequest(null);
 
@@ -192,70 +192,6 @@ const SeatExchange = () => {
     } finally {
       setProcessingPaytm(false);
     }
-  };
-
-  // =====================================================
-  // EDIT RECORD NOTES & STATUS / TAG
-  // =====================================================
-  const handleStartEditRecord = (item) => {
-    const target = item || myRequest || { id: "default_req" };
-    const targetId = target.id || "default_req";
-    setEditingRecordId(targetId);
-    setEditNotes(target.notes || "Passenger requested a lower berth for the journey.");
-    setEditStatusTag(target.status || "PENDING");
-    setEditSuccessMsg("");
-  };
-
-  const handleCancelEdit = () => {
-    setEditingRecordId(null);
-    setEditSuccessMsg("");
-  };
-
-  const handleSaveChanges = (recordId) => {
-    const targetId = recordId || editingRecordId || (myRequest ? myRequest.id : "default_req");
-
-    // Update in requests list state
-    setRequests((prev) => {
-      const exists = prev.some((r) => r.id === targetId || (!r.id && targetId === "default_req"));
-      if (!exists && myRequest) {
-        return [{ ...myRequest, notes: editNotes, status: editStatusTag }, ...prev];
-      }
-      return prev.map((r) =>
-        r.id === targetId || (!r.id && targetId === "default_req")
-          ? { ...r, notes: editNotes, status: editStatusTag }
-          : r
-      );
-    });
-
-    // Update latestRequest / myRequest state
-    if (!myRequest || myRequest.id === targetId || targetId === "default_req") {
-      setLatestRequest((prev) => ({
-        ...(prev || {
-          pnr: "2418593021",
-          trainName: "12951 - Rajdhani Express",
-          trainNumber: "12951",
-          coach: "B2",
-          seatNumber: 35,
-          seatType: "Middle Berth",
-          preferredSeat: "Coach A1 Seat 6",
-          boardingStation: "New Delhi (NDLS)",
-          destinationStation: "Mumbai Central (MMCT)",
-          journeyDate: "2026-08-15"
-        }),
-        notes: editNotes,
-        status: editStatusTag,
-      }));
-    }
-
-    // Update matches list state
-    setMatches((prev) =>
-      prev.map((r) =>
-        r.id === targetId ? { ...r, notes: editNotes, status: editStatusTag } : r
-      )
-    );
-
-    setEditSuccessMsg("✓ Record Notes & Status saved successfully!");
-    setEditingRecordId(null);
   };
 
   // =====================================================
@@ -329,6 +265,336 @@ const SeatExchange = () => {
     }
   };
 
+  // =====================================================
+  // GENERATE STRUCTURED REVIEW PACKET
+  // =====================================================
+  const handleGenerateReviewPacket = async (item) => {
+    if (!item?.id) return;
+
+    if (item.status !== "COMPLETED" && item.status !== "PAYMENT_SUCCESSFUL") {
+      setErrorMsg("Review Packet can only be generated after the seat exchange is completed.");
+      return;
+    }
+
+    try {
+      setReviewLoading(true);
+      setErrorMsg("");
+      setMessage("");
+
+      const response = await api.post(`/seat-exchange/review-packet/${item.id}`, {
+        userNotes: reviewNotes || "",
+      });
+
+      const packet = response.data?.data || response.data;
+      setReviewPacketRequest(item);
+      setReviewPacket(packet);
+      setMessage("✓ Structured Review Packet generated successfully.");
+    } catch (error) {
+      console.error("Review Packet Error:", error);
+      setErrorMsg(
+        error.response?.data?.message ||
+        "Failed to generate Review Packet."
+      );
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  // =====================================================
+  // DOWNLOAD / PRINT REVIEW PACKET
+  // Browser print dialog can be used to Save as PDF.
+  // =====================================================
+  const handleDownloadReviewPacket = () => {
+    if (!reviewPacket) return;
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const formatValue = (value) => {
+      if (Array.isArray(value)) {
+        return value.length
+          ? value.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+          : "<li>None</li>";
+      }
+
+      if (value && typeof value === "object") {
+        return Object.entries(value)
+          .map(
+            ([key, val]) =>
+              `<div class="kv"><span>${escapeHtml(key)}</span><strong>${escapeHtml(val)}</strong></div>`
+          )
+          .join("");
+      }
+
+      return escapeHtml(value === "" ? "None" : value);
+    };
+
+    const sectionHtml = (section) => {
+      const content = section?.content;
+
+      if (content && typeof content === "object" && !Array.isArray(content)) {
+        return Object.entries(content)
+          .map(([key, value]) => {
+            if (value && typeof value === "object" && !Array.isArray(value)) {
+              return `
+                <div class="sub-block">
+                  <h4>${escapeHtml(key)}</h4>
+                  ${formatValue(value)}
+                </div>
+              `;
+            }
+
+            if (Array.isArray(value)) {
+              return `
+                <div class="sub-block">
+                  <span>${escapeHtml(key)}</span>
+                  <ul>${formatValue(value)}</ul>
+                </div>
+              `;
+            }
+
+            return `
+              <div class="kv">
+                <span>${escapeHtml(key)}</span>
+                <strong>${escapeHtml(value ?? "N/A")}</strong>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      if (Array.isArray(content)) {
+        return content.length
+          ? `<ul>${formatValue(content)}</ul>`
+          : "<p>None</p>";
+      }
+
+      return `<p>${escapeHtml(content || "None")}</p>`;
+    };
+
+    const sections = reviewPacket.generatedSections || [];
+    const warnings = reviewPacket.validationWarnings || [];
+    const missing = reviewPacket.missingFields || [];
+    const summary = reviewPacket.reviewSummary || {};
+    const sample = reviewPacket.judgeReadySample || {};
+
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>RailSwap Review Packet</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 32px;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #172033;
+              background: #f4f7fb;
+            }
+            .packet {
+              max-width: 900px;
+              margin: 0 auto;
+              background: #fff;
+              border: 1px solid #dce3ef;
+              border-radius: 18px;
+              overflow: hidden;
+            }
+            .header {
+              padding: 28px 32px;
+              border-bottom: 1px solid #dce3ef;
+              background: #f8fbff;
+            }
+            .brand {
+              font-size: 13px;
+              font-weight: 800;
+              letter-spacing: 1.8px;
+              text-transform: uppercase;
+            }
+            h1 { margin: 8px 0 4px; font-size: 28px; }
+            .meta { color: #667085; font-size: 13px; }
+            .section {
+              margin: 22px 28px;
+              border: 1px solid #e1e7f0;
+              border-radius: 14px;
+              overflow: hidden;
+            }
+            .section h2 {
+              margin: 0;
+              padding: 14px 16px;
+              font-size: 16px;
+              background: #f7f9fc;
+              border-bottom: 1px solid #e1e7f0;
+            }
+            .content { padding: 16px; }
+            .kv {
+              display: flex;
+              justify-content: space-between;
+              gap: 20px;
+              padding: 9px 0;
+              border-bottom: 1px solid #edf1f6;
+            }
+            .kv:last-child { border-bottom: 0; }
+            .kv span { color: #667085; text-transform: capitalize; }
+            .kv strong { text-align: right; }
+            .sub-block {
+              margin: 10px 0;
+              padding: 10px;
+              background: #f8fafc;
+              border-radius: 10px;
+            }
+            .sub-block h4 {
+              margin: 0 0 8px;
+              text-transform: capitalize;
+            }
+            ul { margin: 8px 0 0 18px; padding: 0; }
+            li { margin: 6px 0; }
+            .status {
+              display: inline-block;
+              padding: 6px 10px;
+              border-radius: 999px;
+              background: #e9f8ef;
+              font-weight: 800;
+            }
+            .notes {
+              white-space: pre-wrap;
+              line-height: 1.6;
+              min-height: 50px;
+            }
+            .footer {
+              padding: 20px 28px 28px;
+              color: #667085;
+              font-size: 12px;
+              text-align: center;
+            }
+            @media print {
+              body { padding: 0; background: #fff; }
+              .packet { border: 0; border-radius: 0; max-width: none; }
+              .section { break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="packet">
+            <header class="header">
+              <div class="brand">RAILSWAP</div>
+              <h1>Structured Review Packet</h1>
+              <div class="meta">
+                Review Packet ID: ${escapeHtml(reviewPacket.reviewPacketId || "N/A")}<br />
+                Generated: ${escapeHtml(
+                  reviewPacket.generatedAt
+                    ? new Date(reviewPacket.generatedAt).toLocaleString()
+                    : new Date().toLocaleString()
+                )}
+              </div>
+            </header>
+
+            ${sections
+              .map(
+                (section) => `
+                  <section class="section">
+                    <h2>${escapeHtml(section.title || section.type)}</h2>
+                    <div class="content">${sectionHtml(section)}</div>
+                  </section>
+                `
+              )
+              .join("")}
+
+            <section class="section">
+              <h2>Validation Warnings</h2>
+              <div class="content">
+                ${
+                  warnings.length
+                    ? `<ul>${formatValue(warnings)}</ul>`
+                    : "<p>None</p>"
+                }
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>Missing Fields</h2>
+              <div class="content">
+                ${
+                  missing.length
+                    ? `<ul>${formatValue(missing)}</ul>`
+                    : "<p>None</p>"
+                }
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>Review Summary</h2>
+              <div class="content">
+                ${Object.entries(summary)
+                  .map(
+                    ([key, value]) => `
+                      <div class="kv">
+                        <span>${escapeHtml(key)}</span>
+                        <strong>${escapeHtml(value ?? "N/A")}</strong>
+                      </div>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>User Notes</h2>
+              <div class="content notes">${escapeHtml(
+                reviewPacket.userNotes || reviewNotes || "No notes added."
+              )}</div>
+            </section>
+
+            <section class="section">
+              <h2>Judge-Ready Sample</h2>
+              <div class="content">
+                ${Object.entries(sample)
+                  .map(
+                    ([key, value]) => `
+                      <div class="kv">
+                        <span>${escapeHtml(key)}</span>
+                        <strong>${escapeHtml(value ?? "N/A")}</strong>
+                      </div>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </section>
+
+            <div class="footer">
+              RailSwap — AI Powered Railway Seat Exchange & Smart Passenger Assistance System
+            </div>
+          </main>
+
+          <script>
+            window.onload = function () {
+              setTimeout(function () {
+                window.print();
+              }, 350);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank", "width=1000,height=800");
+
+    if (!printWindow) {
+      setErrorMsg("Please allow pop-ups in the browser to download the Review Packet.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   // Filtered Matches
   const filteredMatches = matches.filter((item) => {
     if (coachFilter !== "ALL" && item.coach?.toUpperCase() !== coachFilter.toUpperCase()) {
@@ -340,34 +606,15 @@ const SeatExchange = () => {
     return true;
   });
 
-  // Status filter helper function
-  const matchesStatusFilter = (itemStatus) => {
-    if (statusFilter === "ALL") return true;
-    const statusUpper = (itemStatus || "").toUpperCase();
-    const filterUpper = statusFilter.toUpperCase();
+  // Categorize Requests for Requester Dashboard
+  const requesterPending = requests.filter((r) => r.status === "PENDING");
+  const requesterAccepted = requests.filter((r) => r.status === "ACCEPTED" || r.paymentUnlocked);
+  const requesterCompleted = requests.filter((r) => r.status === "COMPLETED" || r.status === "PAYMENT_SUCCESSFUL");
+  const requesterRejected = requests.filter((r) => r.status === "REJECTED");
 
-    if (filterUpper === "PENDING") return statusUpper === "PENDING";
-    if (filterUpper === "ACCEPTED") return statusUpper === "ACCEPTED" || statusUpper === "PAYMENT_PENDING";
-    if (filterUpper === "COMPLETED") return statusUpper === "COMPLETED" || statusUpper === "PAYMENT_SUCCESSFUL";
-    if (filterUpper === "REJECTED") return statusUpper === "REJECTED";
-    if (filterUpper === "CANCELLED") return statusUpper === "CANCELLED" || statusUpper === "CANCELLED_BY_USER";
-
-    return statusUpper === filterUpper;
-  };
-
-  // Categorize Requests for Requester Dashboard (Role-Aware Filtered)
-  const requesterPending = requests.filter((r) => r.status === "PENDING" && matchesStatusFilter(r.status));
-  const requesterAccepted = requests.filter((r) => (r.status === "ACCEPTED" || r.paymentUnlocked) && matchesStatusFilter(r.status));
-  const requesterCompleted = requests.filter((r) => (r.status === "COMPLETED" || r.status === "PAYMENT_SUCCESSFUL") && matchesStatusFilter(r.status));
-  const requesterRejected = requests.filter((r) => r.status === "REJECTED" && matchesStatusFilter(r.status));
-  const requesterCancelled = requests.filter((r) => (r.status === "CANCELLED" || r.status === "CANCELLED_BY_USER") && matchesStatusFilter(r.status));
-
-  // Categorize Requests for Receiver Dashboard (Role-Aware Filtered)
-  const receiverIncoming = requests.filter((r) => r.status === "PENDING" && matchesStatusFilter(r.status));
-  const receiverAccepted = requests.filter((r) => (r.status === "ACCEPTED" || r.status === "COMPLETED") && matchesStatusFilter(r.status));
-
-  // History Requests (Role-Aware Filtered)
-  const historyRequests = requests.filter((r) => matchesStatusFilter(r.status));
+  // Categorize Requests for Receiver Dashboard
+  const receiverIncoming = requests.filter((r) => r.status === "PENDING");
+  const receiverAccepted = requests.filter((r) => r.status === "ACCEPTED" || r.status === "COMPLETED");
 
   const myRequest = requests.find((item) => item.user === "user123" || item.user === "user") || latestRequest;
 
@@ -382,7 +629,7 @@ const SeatExchange = () => {
           </h1>
           <p>
             Post PNR ticket details, select wanted Coach & Seat number, and receive direct passenger match acceptances.
-            Paytm ₹50 payment unlocks ONLY AFTER passenger accepts your request!
+            Give Reward is available ONLY AFTER passenger accepts your request!
           </p>
         </div>
 
@@ -394,8 +641,8 @@ const SeatExchange = () => {
             <span>●</span>
           </div>
           <div className="route-label">
-            <span>POST-ACCEPTANCE PAYMENT</span>
-            <strong>Paytm ₹50 Platform Fee</strong>
+            <span>POST-ACCEPTANCE REWARD</span>
+            <strong>Give Reward</strong>
           </div>
         </div>
       </div>
@@ -485,151 +732,6 @@ const SeatExchange = () => {
                 </span>
               </div>
 
-              {/* RECORD NOTES & STATUS / TAG DETAIL VIEW & EDITOR */}
-              <div className="seat-notes-display" style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed #cbd5e1" }}>
-                {editSuccessMsg && (
-                  <div style={{ padding: "8px 12px", background: "#dcfce7", color: "#15803d", borderRadius: "8px", fontSize: "13px", fontWeight: "600", marginBottom: "10px" }}>
-                    {editSuccessMsg}
-                  </div>
-                )}
-
-                {editingRecordId === (myRequest?.id || "default_req") ? (
-                  <div className="record-edit-form" style={{ background: "#f8fafc", padding: "14px", borderRadius: "12px", border: "1px solid #cbd5e1" }}>
-                    <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#0f172a", fontWeight: "700" }}>Edit Record Notes & Status / Tag</h4>
-
-                    {/* STATUS / TAG SELECTOR */}
-                    <div style={{ marginBottom: "12px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" }}>
-                        Status / Tag
-                      </label>
-                      <select
-                        value={editStatusTag}
-                        onChange={(e) => setEditStatusTag(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "8px 12px",
-                          borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "14px",
-                          fontWeight: "600",
-                          color: "#1e293b",
-                          backgroundColor: "#ffffff",
-                          outline: "none"
-                        }}
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="ACCEPTED">Accepted</option>
-                        <option value="REJECTED">Rejected</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="CANCELLED">Cancelled</option>
-                      </select>
-                    </div>
-
-                    {/* EDITABLE NOTES FIELD */}
-                    <div style={{ marginBottom: "12px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" }}>
-                        Notes
-                      </label>
-                      <textarea
-                        rows="3"
-                        placeholder="Enter notes..."
-                        value={editNotes}
-                        onChange={(e) => setEditNotes(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px 12px",
-                          borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "13px",
-                          fontFamily: "inherit",
-                          resize: "vertical",
-                          outline: "none"
-                        }}
-                      />
-                    </div>
-
-                    {/* FORM ACTION BUTTONS */}
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={() => handleSaveChanges(myRequest?.id || "default_req")}
-                        style={{
-                          padding: "8px 16px",
-                          background: "#0b5cad",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                          fontWeight: "600",
-                          cursor: "pointer"
-                        }}
-                      >
-                        Save Changes
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditNotes("")}
-                        style={{
-                          padding: "8px 12px",
-                          background: "#e2e8f0",
-                          color: "#475569",
-                          border: "none",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                          fontWeight: "600",
-                          cursor: "pointer"
-                        }}
-                      >
-                        Clear Notes
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                        style={{
-                          padding: "8px 12px",
-                          background: "transparent",
-                          color: "#64748b",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                          fontWeight: "500",
-                          cursor: "pointer"
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
-                      <strong style={{ fontSize: "13px", color: "#475569" }}>Notes:</strong>
-                      <button
-                        type="button"
-                        onClick={() => handleStartEditRecord(myRequest)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#0b5cad",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                          padding: "2px 6px"
-                        }}
-                      >
-                        ✏️ Edit Notes & Status
-                      </button>
-                    </div>
-
-                    <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#1e293b", fontWeight: "500" }}>
-                      {myRequest?.notes || "Passenger requested a lower berth for the journey."}
-                    </p>
-                  </div>
-                )}
-              </div>
-
               {/* POST-ACCEPTANCE PAYTM PAYMENT UNLOCKED BANNER */}
               {myRequest && (myRequest.status === "ACCEPTED" || myRequest.paymentUnlocked) && !myRequest.donationPaid && (
                 <div className="paytm-unlocked-banner">
@@ -637,7 +739,7 @@ const SeatExchange = () => {
                     <span className="paytm-logo">Paytm</span>
                     <div>
                       <h4>🎉 Seat Exchange Confirmed!</h4>
-                      <p>Passenger accepted your request. Paytm Payment Screen is now unlocked.</p>
+                      <p>Passenger accepted your request. Give Reward option is now unlocked.</p>
                     </div>
                   </div>
                   <button
@@ -647,7 +749,7 @@ const SeatExchange = () => {
                     }}
                     className="paytm-pay-now-btn"
                   >
-                    Pay Paytm ₹50 Now
+                    🎁 Give Reward
                   </button>
                 </div>
               )}
@@ -668,7 +770,7 @@ const SeatExchange = () => {
                 <div>
                   <span>PAYMENT</span>
                   <strong className={myRequest?.donationPaid ? "text-success" : "text-warning"}>
-                    {myRequest?.donationPaid ? "₹50 Paid ✓" : "Unlocked Post-Acceptance"}
+                    {myRequest?.donationPaid ? "Reward Given ✓" : "Unlocked Post-Acceptance"}
                   </strong>
                 </div>
               </div>
@@ -684,156 +786,104 @@ const SeatExchange = () => {
             </div>
           </div>
 
-          {/* ROLE-AWARE RECORD FILTER */}
-          <div className="record-filter-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px 0 15px 0", padding: "14px 20px", background: "white", border: "1px solid #e4eaf1", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#172033" }}>Seat Exchange Records</h3>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>Requester Role Status Filter</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <label htmlFor="seat-status-filter" style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Filter:</label>
-              <select
-                id="seat-status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                  backgroundColor: "#f8fafc",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  color: "#1e293b",
-                  cursor: "pointer",
-                  outline: "none"
-                }}
-              >
-                <option value="ALL">All Records</option>
-                <option value="PENDING">Pending Requests</option>
-                <option value="ACCEPTED">Accepted Requests</option>
-                <option value="REJECTED">Rejected Requests</option>
-                <option value="COMPLETED">Completed Requests</option>
-                <option value="CANCELLED">Cancelled Requests</option>
-              </select>
-            </div>
-          </div>
-
           {/* REQUESTER CATEGORIZED LISTS */}
           <div className="dashboard-sections-grid">
             {/* PENDING REQUESTS */}
-            {(statusFilter === "ALL" || statusFilter === "PENDING") && (
-              <div className="dash-box">
-                <h3>⏳ Pending Requests ({requesterPending.length})</h3>
-                {requesterPending.length === 0 ? (
-                  <p className="empty-text">No pending requests.</p>
-                ) : (
-                  requesterPending.map((item) => (
-                    <div className="mini-request-card" key={item.id}>
-                      <div>
-                        <strong>{item.trainName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
-                        <div className="badge-sub">Status: PENDING (Waiting for Acceptance)</div>
-                        <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
-                          <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
-                        </div>
-                      </div>
-                      <button className="cancel-sm" onClick={() => handleCancel(item.id)}>Cancel</button>
+            <div className="dash-box">
+              <h3>⏳ Pending Requests ({requesterPending.length})</h3>
+              {requesterPending.length === 0 ? (
+                <p className="empty-text">No pending requests.</p>
+              ) : (
+                requesterPending.map((item) => (
+                  <div className="mini-request-card" key={item.id}>
+                    <div>
+                      <strong>{item.trainName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
+                      <div className="badge-sub">Status: PENDING (Waiting for Acceptance)</div>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                    <button className="cancel-sm" onClick={() => handleCancel(item.id)}>Cancel</button>
+                  </div>
+                ))
+              )}
+            </div>
 
             {/* ACCEPTED / PAYMENT PENDING */}
-            {(statusFilter === "ALL" || statusFilter === "ACCEPTED") && (
-              <div className="dash-box highlight-box">
-                <h3>🎉 Accepted & Payment Pending ({requesterAccepted.length})</h3>
-                {requesterAccepted.length === 0 ? (
-                  <p className="empty-text">No accepted requests awaiting payment.</p>
-                ) : (
-                  requesterAccepted.map((item) => (
-                    <div className="mini-request-card" key={item.id}>
-                      <div>
-                        <strong>{item.trainName}</strong> — Exchange Confirmed!
-                        <div className="badge-sub text-success font-bold">Paytm Payment Screen Unlocked!</div>
-                        <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
-                          <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
-                        </div>
-                      </div>
-                      <button
-                        className="paytm-sm-btn"
-                        onClick={() => {
-                          setUnlockedPaymentRequest(item);
-                          setShowPaytmModal(true);
-                        }}
-                      >
-                        Pay Paytm ₹50
-                      </button>
+            <div className="dash-box highlight-box">
+              <h3>🎉 Accepted & Payment Pending ({requesterAccepted.length})</h3>
+              {requesterAccepted.length === 0 ? (
+                <p className="empty-text">No accepted requests awaiting payment.</p>
+              ) : (
+                requesterAccepted.map((item) => (
+                  <div className="mini-request-card" key={item.id}>
+                    <div>
+                      <strong>{item.trainName}</strong> — Exchange Confirmed!
+                      <div className="badge-sub text-success font-bold">Give Reward Unlocked!</div>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                    <button
+                      className="paytm-sm-btn"
+                      onClick={() => {
+                        setUnlockedPaymentRequest(item);
+                        setShowPaytmModal(true);
+                      }}
+                    >
+                      🎁 Give Reward
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
 
             {/* COMPLETED EXCHANGES */}
-            {(statusFilter === "ALL" || statusFilter === "COMPLETED") && (
-              <div className="dash-box">
-                <h3>✅ Completed Exchanges ({requesterCompleted.length})</h3>
-                {requesterCompleted.length === 0 ? (
-                  <p className="empty-text">No completed exchanges yet.</p>
-                ) : (
-                  requesterCompleted.map((item) => (
-                    <div className="mini-request-card" key={item.id}>
-                      <div>
-                        <strong>{item.passengerName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
-                        <div className="text-success font-bold">Exchange Completed ✓</div>
-                      </div>
-                      <button className="receipt-sm-btn" onClick={() => setSelectedReceipt(item)}>Receipt</button>
+            <div className="dash-box">
+              <h3>✅ Completed Exchanges ({requesterCompleted.length})</h3>
+              {requesterCompleted.length === 0 ? (
+                <p className="empty-text">No completed exchanges yet.</p>
+              ) : (
+                requesterCompleted.map((item) => (
+                  <div className="mini-request-card" key={item.id}>
+                    <div>
+                      <strong>{item.passengerName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
+                      <div className="text-success font-bold">Exchange Completed ✓</div>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <button
+                        className="receipt-sm-btn"
+                        onClick={() => setSelectedReceipt(item)}
+                      >
+                        🧾 Receipt
+                      </button>
+                      <button
+                        className="receipt-sm-btn"
+                        onClick={() => {
+                          setReviewNotes("");
+                          setReviewPacket(null);
+                          setReviewPacketRequest(item);
+                          setActiveTab("history");
+                        }}
+                      >
+                        📄 Review Packet
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
 
             {/* REJECTED REQUESTS */}
-            {(statusFilter === "ALL" || statusFilter === "REJECTED") && (
-              <div className="dash-box">
-                <h3>❌ Rejected Requests ({requesterRejected.length})</h3>
-                {requesterRejected.length === 0 ? (
-                  <p className="empty-text">No rejected requests.</p>
-                ) : (
-                  requesterRejected.map((item) => (
-                    <div className="mini-request-card" key={item.id}>
-                      <div>
-                        <strong>{item.passengerName}</strong> ({item.trainName})
-                        <div className="text-danger font-bold">Declined by passenger</div>
-                      </div>
+            <div className="dash-box">
+              <h3>❌ Rejected Requests ({requesterRejected.length})</h3>
+              {requesterRejected.length === 0 ? (
+                <p className="empty-text">No rejected requests.</p>
+              ) : (
+                requesterRejected.map((item) => (
+                  <div className="mini-request-card" key={item.id}>
+                    <div>
+                      <strong>{item.passengerName}</strong> ({item.trainName})
+                      <div className="text-danger font-bold">Declined by passenger</div>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* CANCELLED REQUESTS */}
-            {(statusFilter === "ALL" || statusFilter === "CANCELLED") && (
-              <div className="dash-box">
-                <h3>🚫 Cancelled Requests ({requesterCancelled.length})</h3>
-                {requesterCancelled.length === 0 ? (
-                  <p className="empty-text">No cancelled requests.</p>
-                ) : (
-                  requesterCancelled.map((item) => (
-                    <div className="mini-request-card" key={item.id}>
-                      <div>
-                        <strong>{item.passengerName || item.trainName}</strong> ({item.coach || "B2"}-{item.seatNumber || "35"})
-                        <div className="text-danger font-bold">Request Cancelled</div>
-                        <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
-                          <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -850,33 +900,6 @@ const SeatExchange = () => {
               <p className="subtext">
                 Strictly Accept & Reject options only. Strictly NO chat, messaging, phone calls, or video calls.
               </p>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
-              <label htmlFor="seat-status-filter-receiver" style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Filter Status:</label>
-              <select
-                id="seat-status-filter-receiver"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                  backgroundColor: "#f8fafc",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  color: "#1e293b",
-                  cursor: "pointer",
-                  outline: "none"
-                }}
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="PENDING">Pending Requests</option>
-                <option value="ACCEPTED">Accepted Requests</option>
-                <option value="REJECTED">Rejected Requests</option>
-                <option value="COMPLETED">Completed Requests</option>
-                <option value="CANCELLED">Cancelled Requests</option>
-              </select>
             </div>
           </div>
 
@@ -914,11 +937,6 @@ const SeatExchange = () => {
                           <strong>{item.preferredSeat}</strong>
                           <small>Requested Swap</small>
                         </div>
-                      </div>
-
-                      <div style={{ marginTop: "10px", fontSize: "13px", color: "#475569" }}>
-                        <strong>Notes:</strong>
-                        <p style={{ margin: "2px 0 0 0", color: "#334155" }}>{item.notes || "Passenger requested a lower berth for the journey."}</p>
                       </div>
                     </div>
                   </div>
@@ -959,7 +977,7 @@ const SeatExchange = () => {
                     <strong>{r.passengerName}</strong>
                     <span>{r.coach}-{r.seatNumber} ➔ {r.preferredSeat}</span>
                     <span className="status-success">✓ {r.status}</span>
-                    <span className="amount text-success">+₹50 Escrow Reward</span>
+                    <span className="amount text-success">+ Reward Escrow</span>
                   </div>
                 ))
               )}
@@ -1038,11 +1056,6 @@ const SeatExchange = () => {
                       </div>
                     </div>
 
-                    <div style={{ marginTop: "10px", fontSize: "13px", color: "#475569" }}>
-                      <strong>Notes:</strong>
-                      <p style={{ margin: "2px 0 0 0", color: "#334155" }}>{item.notes || "Passenger requested a lower berth for the journey."}</p>
-                    </div>
-
                     <div className="ai-tags-container">
                       {(item.aiRecommendations || ["Recommend Same Coach First", "Highest Success Probability"]).map(
                         (tag, idx) => (
@@ -1084,46 +1097,14 @@ const SeatExchange = () => {
       ======================================= */}
       {activeTab === "history" && (
         <div className="match-section">
-          <div className="record-filter-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", padding: "14px 20px", background: "white", border: "1px solid #e4eaf1", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "700", color: "#172033" }}>Complete Seat Exchange History</h2>
-              <span style={{ fontSize: "12px", color: "#64748b" }}>Role-Aware Status Filter</span>
-            </div>
+          <h2>Complete Seat Exchange History</h2>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <label htmlFor="seat-status-filter-history" style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Filter Status:</label>
-              <select
-                id="seat-status-filter-history"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "10px",
-                  border: "1px solid #cbd5e1",
-                  backgroundColor: "#f8fafc",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  color: "#1e293b",
-                  cursor: "pointer",
-                  outline: "none"
-                }}
-              >
-                <option value="ALL">All Records</option>
-                <option value="PENDING">Pending Requests</option>
-                <option value="ACCEPTED">Accepted Requests</option>
-                <option value="REJECTED">Rejected Requests</option>
-                <option value="COMPLETED">Completed Requests</option>
-                <option value="CANCELLED">Cancelled Requests</option>
-              </select>
-            </div>
-          </div>
-
-          {historyRequests.length === 0 ? (
+          {requests.length === 0 ? (
             <div className="empty-state">
-              <h3>No Exchange History for selected status</h3>
+              <h3>No Exchange History</h3>
             </div>
           ) : (
-            historyRequests.map((item) => (
+            requests.map((item) => (
               <div className="match-card" key={item.id}>
                 <div className="match-left">
                   <div className="avatar">{(item.passengerName || "P").charAt(0)}</div>
@@ -1135,9 +1116,6 @@ const SeatExchange = () => {
                     <p>
                       <strong>Seat:</strong> {item.coach}-{item.seatNumber} ({item.seatType}) ➔ <strong>Wanted:</strong> {item.preferredSeat}
                     </p>
-                    <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
-                      <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
-                    </div>
                   </div>
                 </div>
 
@@ -1163,8 +1141,8 @@ const SeatExchange = () => {
       ======================================= */}
       {activeTab === "payments" && (
         <div className="match-section">
-          <h2>Paytm Payment & Transaction History</h2>
-          <p className="subtext">Logs for ₹50 post-acceptance Paytm transactions and escrow transfers.</p>
+          <h2>Reward & Transaction History</h2>
+          <p className="subtext">Logs for post-acceptance reward transactions and escrow transfers.</p>
 
           <div className="payment-table">
             <div className="payment-row header">
@@ -1183,7 +1161,7 @@ const SeatExchange = () => {
               paymentHistory.map((tx) => (
                 <div className="payment-row" key={tx.id}>
                   <strong className="tx-id">{tx.transactionId}</strong>
-                  <span className="paytm-badge">Paytm Gateway</span>
+                  <span className="paytm-badge">Reward Gateway</span>
                   <span>{tx.type}</span>
                   <span className="amount">₹{tx.amount || 50}</span>
                   <span className="status-success">✓ {tx.status || "SUCCESS"}</span>
@@ -1228,9 +1206,9 @@ const SeatExchange = () => {
               </div>
 
               <div className="paytm-amount-box">
-                <span>Total Amount to Pay</span>
+                <span>Reward Amount</span>
                 <h2>₹50.00</h2>
-                <small>Platform Fee & Reward Escrow</small>
+                <small>Reward & Escrow</small>
               </div>
             </div>
 
@@ -1240,7 +1218,7 @@ const SeatExchange = () => {
                 onClick={handlePaytmPayment}
                 disabled={processingPaytm}
               >
-                {processingPaytm ? "Processing Paytm Payment..." : "Pay ₹50 via Paytm"}
+                {processingPaytm ? "Processing Paytm Payment..." : "🎁 Give Reward"}
               </button>
             </div>
           </div>
@@ -1248,7 +1226,244 @@ const SeatExchange = () => {
       )}
 
       {/* =======================================
-          MODAL 2: OFFICIAL SEAT EXCHANGE RECEIPT
+          MODAL 2: STRUCTURED REVIEW PACKET
+      ======================================= */}
+      {reviewPacketRequest && (
+        <div className="modal-backdrop">
+          <div className="modal-card receipt-card" style={{ maxWidth: "980px", width: "96%" }}>
+            <div className="modal-header">
+              <div>
+                <h2>Structured Review Packet</h2>
+                <p className="subtext" style={{ margin: "4px 0 0" }}>
+                  Generate a complete judge-ready review packet for this completed exchange.
+                </p>
+              </div>
+              <button
+                className="close-btn"
+                onClick={() => {
+                  setReviewPacketRequest(null);
+                  setReviewPacket(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {!reviewPacket && (
+                <div style={{ marginBottom: "18px" }}>
+                  <label style={{ display: "block", fontWeight: 700, marginBottom: "8px" }}>
+                    User Notes
+                  </label>
+                  <textarea
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Add reviewer notes, passenger notes, validation observations, or any important information..."
+                    rows={5}
+                    style={{
+                      width: "100%",
+                      resize: "vertical",
+                      padding: "12px",
+                      border: "1px solid #d8dee9",
+                      borderRadius: "10px",
+                      fontFamily: "inherit",
+                    }}
+                  />
+
+                  <div className="swap-details-box" style={{ marginTop: "16px" }}>
+                    <div>
+                      <span>Passenger:</span>{" "}
+                      <strong>{reviewPacketRequest.passengerName || "N/A"}</strong>
+                    </div>
+                    <div>
+                      <span>PNR:</span>{" "}
+                      <strong>{reviewPacketRequest.pnr || "N/A"}</strong>
+                    </div>
+                    <div>
+                      <span>Train:</span>{" "}
+                      <strong>
+                        {reviewPacketRequest.trainName || "N/A"} ({reviewPacketRequest.trainNumber || "N/A"})
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Status:</span>{" "}
+                      <strong>{reviewPacketRequest.status || "N/A"}</strong>
+                    </div>
+                  </div>
+
+                  <button
+                    className="paytm-confirm-btn"
+                    onClick={() => handleGenerateReviewPacket(reviewPacketRequest)}
+                    disabled={reviewLoading}
+                    style={{ marginTop: "16px", width: "100%" }}
+                  >
+                    {reviewLoading ? "Generating Review Packet..." : "📄 Generate Review Packet"}
+                  </button>
+                </div>
+              )}
+
+              {reviewPacket && (
+                <div className="printable-receipt">
+                  <div className="receipt-hero">
+                    <div className="rail-logo">📄 RAILSWAP REVIEW PACKET</div>
+                    <span>{reviewPacket.reviewPacketId || "REVIEW PACKET"}</span>
+                  </div>
+
+                  <div className="seat-transition-box">
+                    <div className="old-seat">
+                      <span>STATUS</span>
+                      <h3>{reviewPacket.status || "READY"}</h3>
+                      <small>Review Packet</small>
+                    </div>
+
+                    <div className="transition-arrow">✓</div>
+
+                    <div className="new-seat">
+                      <span>EXCHANGE</span>
+                      <h3>{reviewPacketRequest.status}</h3>
+                      <small>Completed</small>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: "12px" }}>
+                    {(reviewPacket.generatedSections || []).map((section, index) => (
+                      <div
+                        key={`${section.type}-${index}`}
+                        style={{
+                          border: "1px solid #e1e7ef",
+                          borderRadius: "12px",
+                          padding: "14px",
+                          background: "#fff",
+                        }}
+                      >
+                        <h3 style={{ margin: "0 0 10px" }}>
+                          {section.title || section.type}
+                        </h3>
+
+                        {Array.isArray(section.content) ? (
+                          section.content.length ? (
+                            <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                              {section.content.map((value, i) => (
+                                <li key={i}>{String(value)}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>None</p>
+                          )
+                        ) : section.content && typeof section.content === "object" ? (
+                          Object.entries(section.content).map(([key, value]) => (
+                            <div
+                              key={key}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: "20px",
+                                padding: "8px 0",
+                                borderBottom: "1px solid #edf1f5",
+                              }}
+                            >
+                              <span style={{ color: "#667085" }}>
+                                {key.replace(/([A-Z])/g, " $1")}
+                              </span>
+                              <strong style={{ textAlign: "right" }}>
+                                {Array.isArray(value)
+                                  ? value.join(", ") || "None"
+                                  : typeof value === "object" && value !== null
+                                  ? JSON.stringify(value)
+                                  : String(value ?? "N/A")}
+                              </strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ margin: 0 }}>{String(section.content || "None")}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>Validation Warnings</h3>
+                    {(reviewPacket.validationWarnings || []).length ? (
+                      <ul>
+                        {reviewPacket.validationWarnings.map((warning, index) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>None</p>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>Missing Fields</h3>
+                    {(reviewPacket.missingFields || []).length ? (
+                      <ul>
+                        {reviewPacket.missingFields.map((field, index) => (
+                          <li key={index}>{field}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>None</p>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>Review Summary</h3>
+                    {Object.entries(reviewPacket.reviewSummary || {}).map(([key, value]) => (
+                      <div
+                        key={key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "8px 0",
+                          borderBottom: "1px solid #edf1f5",
+                        }}
+                      >
+                        <span style={{ color: "#667085" }}>
+                          {key.replace(/([A-Z])/g, " $1")}
+                        </span>
+                        <strong>{String(value ?? "N/A")}</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>User Notes</h3>
+                    <p style={{ whiteSpace: "pre-wrap" }}>
+                      {reviewPacket.userNotes || "No notes added."}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              {reviewPacket && (
+                <>
+                  <button
+                    className="confirm-pay-btn"
+                    onClick={handleDownloadReviewPacket}
+                  >
+                    ⬇ Download Review Packet
+                  </button>
+                  <button
+                    className="close-btn"
+                    onClick={() => {
+                      setReviewPacketRequest(null);
+                      setReviewPacket(null);
+                    }}
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================
+          MODAL 3: OFFICIAL SEAT EXCHANGE RECEIPT
       ======================================= */}
       {selectedReceipt && (
         <div className="modal-backdrop">
@@ -1310,4 +1525,4 @@ const SeatExchange = () => {
   );
 };
 
-export default SeatExchange ;
+export default SeatExchange;

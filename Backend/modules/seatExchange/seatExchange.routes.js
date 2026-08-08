@@ -1,19 +1,35 @@
 const express = require("express");
+
 const router = express.Router();
 
-const seatExchangeController = require("./seatExchange.controller");
+const seatExchangeController =
+  require("./seatExchange.controller");
 
-// Create Seat Exchange Request
+
+// =====================================================
+// CREATE SEAT EXCHANGE REQUEST
+// =====================================================
+
 router.post(
   "/request",
   seatExchangeController.createSeatExchangeRequest
 );
 
-// Process Paytm Payment Post-Acceptance (₹50 Fee)
+
+// =====================================================
+// PROCESS PAYTM PAYMENT POST-ACCEPTANCE
+// ₹50 Fee
+// =====================================================
+
 router.post(
   "/pay-post-acceptance",
   seatExchangeController.processPaytmPayment
 );
+
+
+// =====================================================
+// PROCESS PAYMENT
+// =====================================================
 
 router.post(
   "/pay",
@@ -21,46 +37,96 @@ router.post(
 );
 
 
-// Get All Seat Exchange Requests
+// =====================================================
+// GET ALL SEAT EXCHANGE REQUESTS
+// =====================================================
+
 router.get(
   "/requests",
   seatExchangeController.getAllSeatExchangeRequests
 );
 
-// Get Payment History
+
+// =====================================================
+// GET PAYMENT HISTORY
+// =====================================================
+
 router.get(
   "/payments",
   seatExchangeController.getPaymentHistory
 );
 
-// Get Seat Exchange Request By ID
+
+// =====================================================
+// GET SEAT EXCHANGE REQUEST BY ID
+// =====================================================
+
 router.get(
   "/requests/:id",
   seatExchangeController.getSeatExchangeRequestById
 );
 
-// Find Matching Passengers (AI Scoring)
+
+// =====================================================
+// FIND MATCHING PASSENGERS
+// AI SCORING
+// =====================================================
+
 router.post(
   "/find-matches",
   seatExchangeController.findMatchingPassengers
 );
 
-// Accept Seat Exchange
+
+// =====================================================
+// ACCEPT SEAT EXCHANGE
+// =====================================================
+
 router.patch(
   "/accept/:id",
   seatExchangeController.acceptSeatExchange
 );
 
-// Reject Seat Exchange
+
+// =====================================================
+// REJECT SEAT EXCHANGE
+// =====================================================
+
 router.patch(
   "/reject/:id",
   seatExchangeController.rejectSeatExchange
 );
 
-// Cancel Seat Exchange
+
+// =====================================================
+// CANCEL SEAT EXCHANGE
+// =====================================================
+
 router.patch(
   "/cancel/:id",
   seatExchangeController.cancelSeatExchange
 );
 
-module.exports = router;
+
+// =====================================================
+// GENERATE STRUCTURED REVIEW PACKET
+// =====================================================
+//
+// Example:
+// GET /seat-exchange/review-packet/:id
+//
+// Only COMPLETED exchanges can generate
+// the review packet.
+//
+
+router.get(
+  "/review-packet/:id",
+  seatExchangeController.generateReviewPacket
+);
+
+
+// =====================================================
+// EXPORT ROUTER
+// =====================================================
+
+module.exports = router;
