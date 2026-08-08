@@ -133,14 +133,7 @@ const LandingPage = () => {
             Passenger Assistance Platform
           </h1>
 
-          <p>
-            AI powered seat recommendations,
-            journey companion matching,
-            emergency medical support,
-            women safety assistance,
-            crowd prediction and passenger
-            comfort in one intelligent platform.
-          </p>
+          
 
           <div className="hero-buttons">
 
