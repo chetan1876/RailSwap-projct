@@ -31,6 +31,7 @@ import LostItemAI from "../components/LostItemAI";
 import CrowdDensity from "../components/CrowdDensity";
 import WomenSafety from "../components/WomenSafety";
 import EmergencyMedical from "../components/EmergencyMedical";
+import ProjectRecord from "../components/ProjectRecord";
 
 /*
 =================================================
@@ -116,6 +117,7 @@ const AppRoutes = () => {
         <Route path="/crowd-density" element={<CrowdDensity />} />
         <Route path="/women-safety" element={<WomenSafety />} />
         <Route path="/emergency-medical" element={<EmergencyMedical />} />
+        <Route path="/project-records" element={<ProjectRecord />} />
 
         <Route path="/profile" element={<Profile />} />
 

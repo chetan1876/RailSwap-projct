@@ -24,6 +24,7 @@ const Dashboard = () => {
     { title: "Crowd Density", icon: "fa-chart-column", path: "/crowd-density" },
     // { title: "Women Safety", icon: "fa-shield-halved", path: "/women-safety" },
     { title: "Medical Match", icon: "fa-briefcase-medical", path: "/emergency-medical" },
+    { title: "Project Records", icon: "fa-folder-open", path: "/project-records" },
   ];
 
   return (

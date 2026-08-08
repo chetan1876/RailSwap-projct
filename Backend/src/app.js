@@ -19,6 +19,7 @@ const aiRecommendationRoutes = require("../modules/aiRecommendation/aiRecommenda
 const journeyRoutes = require("../modules/journeyCompanion/journey.routes");
 const crowdPredictionRoutes = require("../modules/crowdPrediction/crowdPrediction.routes");
 const lostItemRoutes = require("../modules/lostItem/lostItem.routes");
+const projectRecordRoutes = require("../modules/projectRecord/projectRecord.routes");
 
 const app = express();
 
@@ -116,6 +117,8 @@ app.use("/api/journey", journeyRoutes);
 app.use("/api/crowd-prediction", crowdPredictionRoutes);
 
 app.use("/api/lost-items", lostItemRoutes);
+
+app.use("/api/project-records", projectRecordRoutes);
 
 /* =====================================================
                     404 HANDLER
