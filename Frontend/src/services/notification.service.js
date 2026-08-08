@@ -1,51 +1,123 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api/notifications";
+/* =====================================================
+   API BASE URL
+===================================================== */
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
+
+const API_BASE_URL = `${API_URL}/api/notifications`;
+
+/* =====================================================
+   AUTH HEADERS
+===================================================== */
 
 const getHeaders = (token) => ({
   headers: {
     Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   },
 });
 
+/* =====================================================
+   NOTIFICATION API
+===================================================== */
+
 export const notificationAPI = {
+  // Initialize Notifications
   initializeNotifications: async (userId, token) => {
-    return axios.get(`${API_BASE_URL}/${userId}/initialize`, getHeaders(token));
+    const response = await axios.get(
+      `${API_BASE_URL}/${userId}/initialize`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Get All Notifications
   getAllNotifications: async (userId, token) => {
-    return axios.get(`${API_BASE_URL}/${userId}`, getHeaders(token));
+    const response = await axios.get(
+      `${API_BASE_URL}/${userId}`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Get Unread Notifications
   getUnreadNotifications: async (userId, token) => {
-    return axios.get(`${API_BASE_URL}/${userId}/unread`, getHeaders(token));
+    const response = await axios.get(
+      `${API_BASE_URL}/${userId}/unread`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Get Notification Count
   getNotificationCount: async (userId, token) => {
-    return axios.get(`${API_BASE_URL}/${userId}/count`, getHeaders(token));
+    const response = await axios.get(
+      `${API_BASE_URL}/${userId}/count`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Get Notification Details
   getNotificationDetails: async (notificationId, token) => {
-    return axios.get(`${API_BASE_URL}/details/${notificationId}`, getHeaders(token));
+    const response = await axios.get(
+      `${API_BASE_URL}/details/${notificationId}`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Create Notification
   createNotification: async (data, token) => {
-    return axios.post(`${API_BASE_URL}`, data, getHeaders(token));
+    const response = await axios.post(
+      API_BASE_URL,
+      data,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Mark Notification as Read
   markAsRead: async (notificationId, token) => {
-    return axios.patch(`${API_BASE_URL}/${notificationId}/read`, {}, getHeaders(token));
+    const response = await axios.patch(
+      `${API_BASE_URL}/${notificationId}/read`,
+      {},
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Mark All Notifications as Read
   markAllAsRead: async (userId, token) => {
-    return axios.patch(`${API_BASE_URL}/${userId}/read-all`, {}, getHeaders(token));
+    const response = await axios.patch(
+      `${API_BASE_URL}/${userId}/read-all`,
+      {},
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Delete Single Notification
   deleteNotification: async (notificationId, token) => {
-    return axios.delete(`${API_BASE_URL}/${notificationId}`, getHeaders(token));
+    const response = await axios.delete(
+      `${API_BASE_URL}/${notificationId}`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 
+  // Delete All Notifications
   deleteAllNotifications: async (userId, token) => {
-    return axios.delete(`${API_BASE_URL}/${userId}/all`, getHeaders(token));
+    const response = await axios.delete(
+      `${API_BASE_URL}/${userId}/all`,
+      getHeaders(token)
+    );
+    return response.data;
   },
 };
+
+export default notificationAPI;

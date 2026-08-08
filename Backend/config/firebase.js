@@ -2,15 +2,22 @@ const { initializeApp, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 
-const serviceAccount = require("./serviceAccountKey.json");
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+  : require("./serviceAccountKey.json");
 
 let app;
+
 try {
   app = initializeApp({
     credential: cert(serviceAccount),
   });
+
+  console.log("🔥 Firebase Initialized Successfully");
+
 } catch (err) {
-  console.warn("Firebase initializeApp note:", err.message);
+  console.error("❌ Firebase Initialization Failed");
+  console.error(err);
 }
 
 const rawDb = getFirestore(app);
@@ -405,4 +412,4 @@ module.exports = {
   db,
   messaging,
   sendNotification,
-};
+};

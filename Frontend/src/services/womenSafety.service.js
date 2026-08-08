@@ -1,140 +1,125 @@
 import axios from "axios";
 
-const API_BASE_URL =
-  "http://localhost:5000/api/women-safety";
+/* =====================================================
+   API BASE URL
+===================================================== */
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
+
+const API_BASE_URL = `${API_URL}/api/women-safety`;
+
+/* =====================================================
+   AUTH HEADERS
+===================================================== */
+
+const getHeaders = (token) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  },
+});
+
+/* =====================================================
+   WOMEN SAFETY API
+===================================================== */
 
 export const womenSafetyAPI = {
+  // Dashboard
   getDashboard: async (userId, token) => {
-    return axios.get(
+    const response = await axios.get(
       `${API_BASE_URL}/${userId}/dashboard`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
+  // Refresh Dashboard
   refreshDashboard: async (userId, token) => {
-    return axios.patch(
+    const response = await axios.patch(
       `${API_BASE_URL}/${userId}/dashboard/refresh`,
       {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
+  // Safety Score
   getSafetyScore: async (userId, token) => {
-    return axios.get(
+    const response = await axios.get(
       `${API_BASE_URL}/${userId}/safety-score`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
+  // Safe Seats
   getSafeSeats: async (userId, token) => {
-    return axios.get(
+    const response = await axios.get(
       `${API_BASE_URL}/${userId}/safe-seats`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
+  // Journey Companions
   getCompanions: async (userId, token) => {
-    return axios.get(
+    const response = await axios.get(
       `${API_BASE_URL}/${userId}/companions`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
-  connectCompanion: async (
-    userId,
-    data,
-    token
-  ) => {
-    return axios.post(
+  // Connect Companion
+  connectCompanion: async (userId, data, token) => {
+    const response = await axios.post(
       `${API_BASE_URL}/${userId}/companions/connect`,
       data,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
-  raiseSOS: async (
-    userId,
-    data,
-    token
-  ) => {
-    return axios.post(
+  // Raise SOS
+  raiseSOS: async (userId, data, token) => {
+    const response = await axios.post(
       `${API_BASE_URL}/${userId}/sos`,
       data,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
-  contactRPF: async (
-    userId,
-    data,
-    token
-  ) => {
-    return axios.post(
+  // Contact RPF
+  contactRPF: async (userId, data, token) => {
+    const response = await axios.post(
       `${API_BASE_URL}/${userId}/rpf`,
       data,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
-  contactHelpline: async (
-    userId,
-    data,
-    token
-  ) => {
-    return axios.post(
+  // Contact Helpline
+  contactHelpline: async (userId, data, token) => {
+    const response = await axios.post(
       `${API_BASE_URL}/${userId}/helpline`,
       data,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 
-  getInsight: async (
-    userId,
-    token
-  ) => {
-    return axios.get(
+  // AI Insight
+  getInsight: async (userId, token) => {
+    const response = await axios.get(
       `${API_BASE_URL}/${userId}/insight`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      getHeaders(token)
     );
+    return response.data;
   },
 };
+
+export default womenSafetyAPI;

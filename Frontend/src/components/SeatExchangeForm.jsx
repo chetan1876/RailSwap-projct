@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const COACH_OPTIONS = [
   "B1", "B2", "B3", "B4", "B5", "B6",
@@ -96,7 +98,7 @@ const SeatExchangeForm = ({ onSubmit, loading }) => {
       setPnrLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/pnr/verify",
+        `${API_BASE_URL}/api/pnr/verify`,
         { pnr: pnrNum }
       );
 

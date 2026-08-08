@@ -1,31 +1,50 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api/ai-recommendation";
+/* =====================================================
+   API BASE URL
+===================================================== */
 
-// Create a dedicated axios instance for AI Recommendation with interceptors
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
+
+const API_BASE_URL = `${API_URL}/api/ai-recommendation`;
+
+/* =====================================================
+   AXIOS INSTANCE
+===================================================== */
+
 const aiRecommendationAxios = axios.create({
   baseURL: API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Request interceptor — attach the token automatically
-// Reads 'accessToken' which is the key stored by AuthContext on login/google login
+/* =====================================================
+   REQUEST INTERCEPTOR
+===================================================== */
+
 aiRecommendationAxios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle errors and surface the real backend message
+/* =====================================================
+   RESPONSE INTERCEPTOR
+===================================================== */
+
 aiRecommendationAxios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Extract the most specific message available
     const backendMessage =
       error.response?.data?.message ||
       error.response?.data?.error ||
@@ -33,99 +52,106 @@ aiRecommendationAxios.interceptors.response.use(
       "An unexpected error occurred.";
 
     if (error.response?.status === 401) {
-      console.warn("[AI Recommendation] 401 Unauthorized:", backendMessage);
+      console.warn(
+        "[AI Recommendation] Unauthorized:",
+        backendMessage
+      );
     } else if (error.response?.status === 500) {
-      console.error("[AI Recommendation] 500 Server Error:", backendMessage);
+      console.error(
+        "[AI Recommendation] Server Error:",
+        backendMessage
+      );
     } else if (!error.response) {
-      console.error("[AI Recommendation] Network Error:", backendMessage);
+      console.error(
+        "[AI Recommendation] Network Error:",
+        backendMessage
+      );
     }
 
-    // Reject with a proper Error so err.message is always readable in components
     const err = new Error(backendMessage);
     err.statusCode = error.response?.status;
     err.data = error.response?.data;
+
     return Promise.reject(err);
   }
 );
 
+/* =====================================================
+   API METHODS
+===================================================== */
+
 export const aiRecommendationAPI = {
-  /**
-   * Request a new AI travel recommendation.
-   */
+  // Generate AI Recommendation
   generateRecommendation: async (data) => {
     const response = await aiRecommendationAxios.post("/", data);
     return response.data;
   },
 
-  /**
-   * Get recommendation history.
-   */
+  // History
   getHistory: async () => {
     const response = await aiRecommendationAxios.get("/history");
     return response.data;
   },
 
-  /**
-   * Get recent recommendations.
-   */
+  // Recent
   getRecent: async (limit = 5) => {
-    const response = await aiRecommendationAxios.get(`/recent?limit=${limit}`);
+    const response = await aiRecommendationAxios.get(
+      `/recent?limit=${limit}`
+    );
     return response.data;
   },
 
-  /**
-   * Search history logs.
-   */
+  // Search
   search: async (query) => {
-    const response = await aiRecommendationAxios.get(`/search?q=${encodeURIComponent(query)}`);
+    const response = await aiRecommendationAxios.get(
+      `/search?q=${encodeURIComponent(query)}`
+    );
     return response.data;
   },
 
-  /**
-   * Get recommendation details by ID.
-   */
+  // Details
   getDetails: async (id) => {
     const response = await aiRecommendationAxios.get(`/${id}`);
     return response.data;
   },
 
-  /**
-   * Bookmark or unbookmark a recommendation log.
-   */
+  // Bookmark
   bookmark: async (id) => {
-    const response = await aiRecommendationAxios.post(`/${id}/bookmark`, {});
+    const response = await aiRecommendationAxios.post(
+      `/${id}/bookmark`,
+      {}
+    );
     return response.data;
   },
 
-  /**
-   * Delete a single recommendation record.
-   */
+  // Delete
   deleteItem: async (id) => {
     const response = await aiRecommendationAxios.delete(`/${id}`);
     return response.data;
   },
 
-  /**
-   * Clear all recommendation history.
-   */
+  // Clear History
   clearHistory: async () => {
     const response = await aiRecommendationAxios.delete("/history");
     return response.data;
   },
 
-  /**
-   * Fetch supported booking providers list.
-   */
+  // Booking Providers
   getBookingProviders: async () => {
-    const response = await aiRecommendationAxios.get("/booking/providers");
+    const response = await aiRecommendationAxios.get(
+      "/booking/providers"
+    );
     return response.data;
   },
 
-  /**
-   * Prepare booking payload and get redirect URL for provider.
-   */
+  // Prepare Booking
   prepareBooking: async (bookingData) => {
-    const response = await aiRecommendationAxios.post("/booking/prepare", bookingData);
+    const response = await aiRecommendationAxios.post(
+      "/booking/prepare",
+      bookingData
+    );
     return response.data;
   },
 };
+
+export default aiRecommendationAxios;
