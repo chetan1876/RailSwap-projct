@@ -34,6 +34,7 @@ const SeatExchangeForm = ({ onSubmit, loading }) => {
     medicalPriority: false,
     seniorCitizenPriority: false,
     familyPriority: false,
+    notes: "Passenger requested a lower berth for the journey.",
   });
 
   const [error, setError] = useState("");
@@ -352,6 +353,30 @@ const SeatExchangeForm = ({ onSubmit, loading }) => {
             />
             <span>Near Family</span>
           </label>
+        </div>
+      </div>
+
+      {/* NOTES SECTION */}
+      <div className="priority-options-container">
+        <label className="priority-title">4. Request Notes</label>
+        <div className="input-group" style={{ marginTop: "10px" }}>
+          <textarea
+            name="notes"
+            rows="2"
+            placeholder="Passenger requested a lower berth for the journey."
+            value={formData.notes}
+            onChange={handleChange}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              borderRadius: "12px",
+              border: "1px solid #cbd5e1",
+              fontSize: "14px",
+              fontFamily: "inherit",
+              resize: "vertical",
+              outline: "none"
+            }}
+          />
         </div>
       </div>
 

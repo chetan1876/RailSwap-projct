@@ -51,6 +51,7 @@ const createSeatExchangeValidation = Joi.object({
   familyPriority: Joi.boolean().optional().default(false),
 
   pnrVerified: Joi.boolean().optional().default(true),
+  notes: Joi.string().optional().allow("", null).default("Passenger requested a lower berth for the journey."),
 });
 
 // Paytm Post-Acceptance Payment Validation

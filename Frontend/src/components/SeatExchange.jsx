@@ -395,6 +395,13 @@ const SeatExchange = () => {
                 </span>
               </div>
 
+              <div className="seat-notes-display" style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed #cbd5e1" }}>
+                <strong style={{ fontSize: "13px", color: "#475569", display: "block", marginBottom: "2px" }}>Notes:</strong>
+                <p style={{ margin: 0, fontSize: "14px", color: "#1e293b", fontWeight: "500" }}>
+                  {myRequest?.notes || "Passenger requested a lower berth for the journey."}
+                </p>
+              </div>
+
               {/* POST-ACCEPTANCE PAYTM PAYMENT UNLOCKED BANNER */}
               {myRequest && (myRequest.status === "ACCEPTED" || myRequest.paymentUnlocked) && !myRequest.donationPaid && (
                 <div className="paytm-unlocked-banner">
@@ -462,6 +469,9 @@ const SeatExchange = () => {
                     <div>
                       <strong>{item.trainName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
                       <div className="badge-sub">Status: PENDING (Waiting for Acceptance)</div>
+                      <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                        <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                      </div>
                     </div>
                     <button className="cancel-sm" onClick={() => handleCancel(item.id)}>Cancel</button>
                   </div>
@@ -480,6 +490,9 @@ const SeatExchange = () => {
                     <div>
                       <strong>{item.trainName}</strong> — Exchange Confirmed!
                       <div className="badge-sub text-success font-bold">Paytm Payment Screen Unlocked!</div>
+                      <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                        <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                      </div>
                     </div>
                     <button
                       className="paytm-sm-btn"
@@ -582,6 +595,11 @@ const SeatExchange = () => {
                           <strong>{item.preferredSeat}</strong>
                           <small>Requested Swap</small>
                         </div>
+                      </div>
+
+                      <div style={{ marginTop: "10px", fontSize: "13px", color: "#475569" }}>
+                        <strong>Notes:</strong>
+                        <p style={{ margin: "2px 0 0 0", color: "#334155" }}>{item.notes || "Passenger requested a lower berth for the journey."}</p>
                       </div>
                     </div>
                   </div>
@@ -701,6 +719,11 @@ const SeatExchange = () => {
                       </div>
                     </div>
 
+                    <div style={{ marginTop: "10px", fontSize: "13px", color: "#475569" }}>
+                      <strong>Notes:</strong>
+                      <p style={{ margin: "2px 0 0 0", color: "#334155" }}>{item.notes || "Passenger requested a lower berth for the journey."}</p>
+                    </div>
+
                     <div className="ai-tags-container">
                       {(item.aiRecommendations || ["Recommend Same Coach First", "Highest Success Probability"]).map(
                         (tag, idx) => (
@@ -761,6 +784,9 @@ const SeatExchange = () => {
                     <p>
                       <strong>Seat:</strong> {item.coach}-{item.seatNumber} ({item.seatType}) ➔ <strong>Wanted:</strong> {item.preferredSeat}
                     </p>
+                    <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                      <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                    </div>
                   </div>
                 </div>
 

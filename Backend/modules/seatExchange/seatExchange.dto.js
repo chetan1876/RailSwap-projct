@@ -41,6 +41,8 @@ class SeatExchangeDTO {
     this.paymentStatus = data.paymentStatus || "NOT_REQUIRED";
     this.paymentProvider = data.paymentProvider || "PAYTM";
 
+    this.notes = data.notes || "Passenger requested a lower berth for the journey.";
+
     this.user = data.user;
     this.matchedUser = data.matchedUser;
 
