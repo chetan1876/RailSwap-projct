@@ -45,6 +45,13 @@ const SeatExchange = () => {
   // Filter State
   const [coachFilter, setCoachFilter] = useState("ALL");
   const [berthFilter, setBerthFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL"); // 'ALL' | 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED' | 'CANCELLED'
+
+  // Editable Notes & Status Tag State
+  const [editingRecordId, setEditingRecordId] = useState(null);
+  const [editNotes, setEditNotes] = useState("");
+  const [editStatusTag, setEditStatusTag] = useState("PENDING");
+  const [editSuccessMsg, setEditSuccessMsg] = useState("");
 
   // =====================================================
   // FIREBASE NOTIFICATIONS
@@ -188,6 +195,70 @@ const SeatExchange = () => {
   };
 
   // =====================================================
+  // EDIT RECORD NOTES & STATUS / TAG
+  // =====================================================
+  const handleStartEditRecord = (item) => {
+    const target = item || myRequest || { id: "default_req" };
+    const targetId = target.id || "default_req";
+    setEditingRecordId(targetId);
+    setEditNotes(target.notes || "Passenger requested a lower berth for the journey.");
+    setEditStatusTag(target.status || "PENDING");
+    setEditSuccessMsg("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRecordId(null);
+    setEditSuccessMsg("");
+  };
+
+  const handleSaveChanges = (recordId) => {
+    const targetId = recordId || editingRecordId || (myRequest ? myRequest.id : "default_req");
+
+    // Update in requests list state
+    setRequests((prev) => {
+      const exists = prev.some((r) => r.id === targetId || (!r.id && targetId === "default_req"));
+      if (!exists && myRequest) {
+        return [{ ...myRequest, notes: editNotes, status: editStatusTag }, ...prev];
+      }
+      return prev.map((r) =>
+        r.id === targetId || (!r.id && targetId === "default_req")
+          ? { ...r, notes: editNotes, status: editStatusTag }
+          : r
+      );
+    });
+
+    // Update latestRequest / myRequest state
+    if (!myRequest || myRequest.id === targetId || targetId === "default_req") {
+      setLatestRequest((prev) => ({
+        ...(prev || {
+          pnr: "2418593021",
+          trainName: "12951 - Rajdhani Express",
+          trainNumber: "12951",
+          coach: "B2",
+          seatNumber: 35,
+          seatType: "Middle Berth",
+          preferredSeat: "Coach A1 Seat 6",
+          boardingStation: "New Delhi (NDLS)",
+          destinationStation: "Mumbai Central (MMCT)",
+          journeyDate: "2026-08-15"
+        }),
+        notes: editNotes,
+        status: editStatusTag,
+      }));
+    }
+
+    // Update matches list state
+    setMatches((prev) =>
+      prev.map((r) =>
+        r.id === targetId ? { ...r, notes: editNotes, status: editStatusTag } : r
+      )
+    );
+
+    setEditSuccessMsg("✓ Record Notes & Status saved successfully!");
+    setEditingRecordId(null);
+  };
+
+  // =====================================================
   // FIND MATCHING PASSENGERS
   // =====================================================
   const findMatches = async (targetRequest = null) => {
@@ -269,15 +340,34 @@ const SeatExchange = () => {
     return true;
   });
 
-  // Categorize Requests for Requester Dashboard
-  const requesterPending = requests.filter((r) => r.status === "PENDING");
-  const requesterAccepted = requests.filter((r) => r.status === "ACCEPTED" || r.paymentUnlocked);
-  const requesterCompleted = requests.filter((r) => r.status === "COMPLETED" || r.status === "PAYMENT_SUCCESSFUL");
-  const requesterRejected = requests.filter((r) => r.status === "REJECTED");
+  // Status filter helper function
+  const matchesStatusFilter = (itemStatus) => {
+    if (statusFilter === "ALL") return true;
+    const statusUpper = (itemStatus || "").toUpperCase();
+    const filterUpper = statusFilter.toUpperCase();
 
-  // Categorize Requests for Receiver Dashboard
-  const receiverIncoming = requests.filter((r) => r.status === "PENDING");
-  const receiverAccepted = requests.filter((r) => r.status === "ACCEPTED" || r.status === "COMPLETED");
+    if (filterUpper === "PENDING") return statusUpper === "PENDING";
+    if (filterUpper === "ACCEPTED") return statusUpper === "ACCEPTED" || statusUpper === "PAYMENT_PENDING";
+    if (filterUpper === "COMPLETED") return statusUpper === "COMPLETED" || statusUpper === "PAYMENT_SUCCESSFUL";
+    if (filterUpper === "REJECTED") return statusUpper === "REJECTED";
+    if (filterUpper === "CANCELLED") return statusUpper === "CANCELLED" || statusUpper === "CANCELLED_BY_USER";
+
+    return statusUpper === filterUpper;
+  };
+
+  // Categorize Requests for Requester Dashboard (Role-Aware Filtered)
+  const requesterPending = requests.filter((r) => r.status === "PENDING" && matchesStatusFilter(r.status));
+  const requesterAccepted = requests.filter((r) => (r.status === "ACCEPTED" || r.paymentUnlocked) && matchesStatusFilter(r.status));
+  const requesterCompleted = requests.filter((r) => (r.status === "COMPLETED" || r.status === "PAYMENT_SUCCESSFUL") && matchesStatusFilter(r.status));
+  const requesterRejected = requests.filter((r) => r.status === "REJECTED" && matchesStatusFilter(r.status));
+  const requesterCancelled = requests.filter((r) => (r.status === "CANCELLED" || r.status === "CANCELLED_BY_USER") && matchesStatusFilter(r.status));
+
+  // Categorize Requests for Receiver Dashboard (Role-Aware Filtered)
+  const receiverIncoming = requests.filter((r) => r.status === "PENDING" && matchesStatusFilter(r.status));
+  const receiverAccepted = requests.filter((r) => (r.status === "ACCEPTED" || r.status === "COMPLETED") && matchesStatusFilter(r.status));
+
+  // History Requests (Role-Aware Filtered)
+  const historyRequests = requests.filter((r) => matchesStatusFilter(r.status));
 
   const myRequest = requests.find((item) => item.user === "user123" || item.user === "user") || latestRequest;
 
@@ -395,6 +485,151 @@ const SeatExchange = () => {
                 </span>
               </div>
 
+              {/* RECORD NOTES & STATUS / TAG DETAIL VIEW & EDITOR */}
+              <div className="seat-notes-display" style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed #cbd5e1" }}>
+                {editSuccessMsg && (
+                  <div style={{ padding: "8px 12px", background: "#dcfce7", color: "#15803d", borderRadius: "8px", fontSize: "13px", fontWeight: "600", marginBottom: "10px" }}>
+                    {editSuccessMsg}
+                  </div>
+                )}
+
+                {editingRecordId === (myRequest?.id || "default_req") ? (
+                  <div className="record-edit-form" style={{ background: "#f8fafc", padding: "14px", borderRadius: "12px", border: "1px solid #cbd5e1" }}>
+                    <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#0f172a", fontWeight: "700" }}>Edit Record Notes & Status / Tag</h4>
+
+                    {/* STATUS / TAG SELECTOR */}
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" }}>
+                        Status / Tag
+                      </label>
+                      <select
+                        value={editStatusTag}
+                        onChange={(e) => setEditStatusTag(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#1e293b",
+                          backgroundColor: "#ffffff",
+                          outline: "none"
+                        }}
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="ACCEPTED">Accepted</option>
+                        <option value="REJECTED">Rejected</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                      </select>
+                    </div>
+
+                    {/* EDITABLE NOTES FIELD */}
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", display: "block", marginBottom: "4px" }}>
+                        Notes
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="Enter notes..."
+                        value={editNotes}
+                        onChange={(e) => setEditNotes(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "13px",
+                          fontFamily: "inherit",
+                          resize: "vertical",
+                          outline: "none"
+                        }}
+                      />
+                    </div>
+
+                    {/* FORM ACTION BUTTONS */}
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveChanges(myRequest?.id || "default_req")}
+                        style={{
+                          padding: "8px 16px",
+                          background: "#0b5cad",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Save Changes
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditNotes("")}
+                        style={{
+                          padding: "8px 12px",
+                          background: "#e2e8f0",
+                          color: "#475569",
+                          border: "none",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Clear Notes
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        style={{
+                          padding: "8px 12px",
+                          background: "transparent",
+                          color: "#64748b",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          cursor: "pointer"
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+                      <strong style={{ fontSize: "13px", color: "#475569" }}>Notes:</strong>
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditRecord(myRequest)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#0b5cad",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          padding: "2px 6px"
+                        }}
+                      >
+                        ✏️ Edit Notes & Status
+                      </button>
+                    </div>
+
+                    <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#1e293b", fontWeight: "500" }}>
+                      {myRequest?.notes || "Passenger requested a lower berth for the journey."}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* POST-ACCEPTANCE PAYTM PAYMENT UNLOCKED BANNER */}
               {myRequest && (myRequest.status === "ACCEPTED" || myRequest.paymentUnlocked) && !myRequest.donationPaid && (
                 <div className="paytm-unlocked-banner">
@@ -449,86 +684,156 @@ const SeatExchange = () => {
             </div>
           </div>
 
+          {/* ROLE-AWARE RECORD FILTER */}
+          <div className="record-filter-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px 0 15px 0", padding: "14px 20px", background: "white", border: "1px solid #e4eaf1", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#172033" }}>Seat Exchange Records</h3>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>Requester Role Status Filter</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <label htmlFor="seat-status-filter" style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Filter:</label>
+              <select
+                id="seat-status-filter"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#1e293b",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                <option value="ALL">All Records</option>
+                <option value="PENDING">Pending Requests</option>
+                <option value="ACCEPTED">Accepted Requests</option>
+                <option value="REJECTED">Rejected Requests</option>
+                <option value="COMPLETED">Completed Requests</option>
+                <option value="CANCELLED">Cancelled Requests</option>
+              </select>
+            </div>
+          </div>
+
           {/* REQUESTER CATEGORIZED LISTS */}
           <div className="dashboard-sections-grid">
             {/* PENDING REQUESTS */}
-            <div className="dash-box">
-              <h3>⏳ Pending Requests ({requesterPending.length})</h3>
-              {requesterPending.length === 0 ? (
-                <p className="empty-text">No pending requests.</p>
-              ) : (
-                requesterPending.map((item) => (
-                  <div className="mini-request-card" key={item.id}>
-                    <div>
-                      <strong>{item.trainName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
-                      <div className="badge-sub">Status: PENDING (Waiting for Acceptance)</div>
+            {(statusFilter === "ALL" || statusFilter === "PENDING") && (
+              <div className="dash-box">
+                <h3>⏳ Pending Requests ({requesterPending.length})</h3>
+                {requesterPending.length === 0 ? (
+                  <p className="empty-text">No pending requests.</p>
+                ) : (
+                  requesterPending.map((item) => (
+                    <div className="mini-request-card" key={item.id}>
+                      <div>
+                        <strong>{item.trainName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
+                        <div className="badge-sub">Status: PENDING (Waiting for Acceptance)</div>
+                        <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                          <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                        </div>
+                      </div>
+                      <button className="cancel-sm" onClick={() => handleCancel(item.id)}>Cancel</button>
                     </div>
-                    <button className="cancel-sm" onClick={() => handleCancel(item.id)}>Cancel</button>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
 
             {/* ACCEPTED / PAYMENT PENDING */}
-            <div className="dash-box highlight-box">
-              <h3>🎉 Accepted & Payment Pending ({requesterAccepted.length})</h3>
-              {requesterAccepted.length === 0 ? (
-                <p className="empty-text">No accepted requests awaiting payment.</p>
-              ) : (
-                requesterAccepted.map((item) => (
-                  <div className="mini-request-card" key={item.id}>
-                    <div>
-                      <strong>{item.trainName}</strong> — Exchange Confirmed!
-                      <div className="badge-sub text-success font-bold">Paytm Payment Screen Unlocked!</div>
+            {(statusFilter === "ALL" || statusFilter === "ACCEPTED") && (
+              <div className="dash-box highlight-box">
+                <h3>🎉 Accepted & Payment Pending ({requesterAccepted.length})</h3>
+                {requesterAccepted.length === 0 ? (
+                  <p className="empty-text">No accepted requests awaiting payment.</p>
+                ) : (
+                  requesterAccepted.map((item) => (
+                    <div className="mini-request-card" key={item.id}>
+                      <div>
+                        <strong>{item.trainName}</strong> — Exchange Confirmed!
+                        <div className="badge-sub text-success font-bold">Paytm Payment Screen Unlocked!</div>
+                        <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                          <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                        </div>
+                      </div>
+                      <button
+                        className="paytm-sm-btn"
+                        onClick={() => {
+                          setUnlockedPaymentRequest(item);
+                          setShowPaytmModal(true);
+                        }}
+                      >
+                        Pay Paytm ₹50
+                      </button>
                     </div>
-                    <button
-                      className="paytm-sm-btn"
-                      onClick={() => {
-                        setUnlockedPaymentRequest(item);
-                        setShowPaytmModal(true);
-                      }}
-                    >
-                      Pay Paytm ₹50
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
 
             {/* COMPLETED EXCHANGES */}
-            <div className="dash-box">
-              <h3>✅ Completed Exchanges ({requesterCompleted.length})</h3>
-              {requesterCompleted.length === 0 ? (
-                <p className="empty-text">No completed exchanges yet.</p>
-              ) : (
-                requesterCompleted.map((item) => (
-                  <div className="mini-request-card" key={item.id}>
-                    <div>
-                      <strong>{item.passengerName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
-                      <div className="text-success font-bold">Exchange Completed ✓</div>
+            {(statusFilter === "ALL" || statusFilter === "COMPLETED") && (
+              <div className="dash-box">
+                <h3>✅ Completed Exchanges ({requesterCompleted.length})</h3>
+                {requesterCompleted.length === 0 ? (
+                  <p className="empty-text">No completed exchanges yet.</p>
+                ) : (
+                  requesterCompleted.map((item) => (
+                    <div className="mini-request-card" key={item.id}>
+                      <div>
+                        <strong>{item.passengerName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
+                        <div className="text-success font-bold">Exchange Completed ✓</div>
+                      </div>
+                      <button className="receipt-sm-btn" onClick={() => setSelectedReceipt(item)}>Receipt</button>
                     </div>
-                    <button className="receipt-sm-btn" onClick={() => setSelectedReceipt(item)}>Receipt</button>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
 
             {/* REJECTED REQUESTS */}
-            <div className="dash-box">
-              <h3>❌ Rejected Requests ({requesterRejected.length})</h3>
-              {requesterRejected.length === 0 ? (
-                <p className="empty-text">No rejected requests.</p>
-              ) : (
-                requesterRejected.map((item) => (
-                  <div className="mini-request-card" key={item.id}>
-                    <div>
-                      <strong>{item.passengerName}</strong> ({item.trainName})
-                      <div className="text-danger font-bold">Declined by passenger</div>
+            {(statusFilter === "ALL" || statusFilter === "REJECTED") && (
+              <div className="dash-box">
+                <h3>❌ Rejected Requests ({requesterRejected.length})</h3>
+                {requesterRejected.length === 0 ? (
+                  <p className="empty-text">No rejected requests.</p>
+                ) : (
+                  requesterRejected.map((item) => (
+                    <div className="mini-request-card" key={item.id}>
+                      <div>
+                        <strong>{item.passengerName}</strong> ({item.trainName})
+                        <div className="text-danger font-bold">Declined by passenger</div>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* CANCELLED REQUESTS */}
+            {(statusFilter === "ALL" || statusFilter === "CANCELLED") && (
+              <div className="dash-box">
+                <h3>🚫 Cancelled Requests ({requesterCancelled.length})</h3>
+                {requesterCancelled.length === 0 ? (
+                  <p className="empty-text">No cancelled requests.</p>
+                ) : (
+                  requesterCancelled.map((item) => (
+                    <div className="mini-request-card" key={item.id}>
+                      <div>
+                        <strong>{item.passengerName || item.trainName}</strong> ({item.coach || "B2"}-{item.seatNumber || "35"})
+                        <div className="text-danger font-bold">Request Cancelled</div>
+                        <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                          <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -545,6 +850,33 @@ const SeatExchange = () => {
               <p className="subtext">
                 Strictly Accept & Reject options only. Strictly NO chat, messaging, phone calls, or video calls.
               </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
+              <label htmlFor="seat-status-filter-receiver" style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Filter Status:</label>
+              <select
+                id="seat-status-filter-receiver"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#1e293b",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="PENDING">Pending Requests</option>
+                <option value="ACCEPTED">Accepted Requests</option>
+                <option value="REJECTED">Rejected Requests</option>
+                <option value="COMPLETED">Completed Requests</option>
+                <option value="CANCELLED">Cancelled Requests</option>
+              </select>
             </div>
           </div>
 
@@ -582,6 +914,11 @@ const SeatExchange = () => {
                           <strong>{item.preferredSeat}</strong>
                           <small>Requested Swap</small>
                         </div>
+                      </div>
+
+                      <div style={{ marginTop: "10px", fontSize: "13px", color: "#475569" }}>
+                        <strong>Notes:</strong>
+                        <p style={{ margin: "2px 0 0 0", color: "#334155" }}>{item.notes || "Passenger requested a lower berth for the journey."}</p>
                       </div>
                     </div>
                   </div>
@@ -701,6 +1038,11 @@ const SeatExchange = () => {
                       </div>
                     </div>
 
+                    <div style={{ marginTop: "10px", fontSize: "13px", color: "#475569" }}>
+                      <strong>Notes:</strong>
+                      <p style={{ margin: "2px 0 0 0", color: "#334155" }}>{item.notes || "Passenger requested a lower berth for the journey."}</p>
+                    </div>
+
                     <div className="ai-tags-container">
                       {(item.aiRecommendations || ["Recommend Same Coach First", "Highest Success Probability"]).map(
                         (tag, idx) => (
@@ -742,14 +1084,46 @@ const SeatExchange = () => {
       ======================================= */}
       {activeTab === "history" && (
         <div className="match-section">
-          <h2>Complete Seat Exchange History</h2>
+          <div className="record-filter-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", padding: "14px 20px", background: "white", border: "1px solid #e4eaf1", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "700", color: "#172033" }}>Complete Seat Exchange History</h2>
+              <span style={{ fontSize: "12px", color: "#64748b" }}>Role-Aware Status Filter</span>
+            </div>
 
-          {requests.length === 0 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <label htmlFor="seat-status-filter-history" style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Filter Status:</label>
+              <select
+                id="seat-status-filter-history"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "10px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#1e293b",
+                  cursor: "pointer",
+                  outline: "none"
+                }}
+              >
+                <option value="ALL">All Records</option>
+                <option value="PENDING">Pending Requests</option>
+                <option value="ACCEPTED">Accepted Requests</option>
+                <option value="REJECTED">Rejected Requests</option>
+                <option value="COMPLETED">Completed Requests</option>
+                <option value="CANCELLED">Cancelled Requests</option>
+              </select>
+            </div>
+          </div>
+
+          {historyRequests.length === 0 ? (
             <div className="empty-state">
-              <h3>No Exchange History</h3>
+              <h3>No Exchange History for selected status</h3>
             </div>
           ) : (
-            requests.map((item) => (
+            historyRequests.map((item) => (
               <div className="match-card" key={item.id}>
                 <div className="match-left">
                   <div className="avatar">{(item.passengerName || "P").charAt(0)}</div>
@@ -761,6 +1135,9 @@ const SeatExchange = () => {
                     <p>
                       <strong>Seat:</strong> {item.coach}-{item.seatNumber} ({item.seatType}) ➔ <strong>Wanted:</strong> {item.preferredSeat}
                     </p>
+                    <div style={{ marginTop: "6px", fontSize: "13px", color: "#475569" }}>
+                      <strong>Notes:</strong> {item.notes || "Passenger requested a lower berth for the journey."}
+                    </div>
                   </div>
                 </div>
 
@@ -933,4 +1310,4 @@ const SeatExchange = () => {
   );
 };
 
-export default SeatExchange;
+export default SeatExchange ;
