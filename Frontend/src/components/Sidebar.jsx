@@ -60,6 +60,11 @@ const Sidebar = () => {
     icon: "fa-solid fa-briefcase-medical",
     path: "/emergency-medical",
   },
+  {
+    name: "Project Records",
+    icon: "fa-solid fa-folder-open",
+    path: "/project-records",
+  },
 ];
 
   return (
