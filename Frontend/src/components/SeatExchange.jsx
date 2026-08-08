@@ -10,6 +10,7 @@ import {
   cancelSeatExchange,
   getPaymentHistory,
 } from "../services/seatExchange.service";
+import api from "../services/api";
 
 import {
   requestNotificationPermission,
@@ -41,6 +42,12 @@ const SeatExchange = () => {
 
   // Receipt Modal State
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+  // Structured Review Packet State
+  const [reviewPacket, setReviewPacket] = useState(null);
+  const [reviewPacketRequest, setReviewPacketRequest] = useState(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Filter State
   const [coachFilter, setCoachFilter] = useState("ALL");
@@ -140,7 +147,7 @@ const SeatExchange = () => {
       const res = await acceptSeatExchange(requestId, targetUserId || "user123");
       const updatedItem = res.data;
 
-      setMessage("🎉 Seat Exchange Confirmed! Paytm Payment Screen has been unlocked for the requester.");
+      setMessage("🎉 Seat Exchange Confirmed! Give Reward option has been unlocked for the requester.");
 
       // Update state locally
       setRequests((prev) =>
@@ -158,7 +165,7 @@ const SeatExchange = () => {
   };
 
   // =====================================================
-  // REQUESTER PAYS ₹50 VIA PAYTM AFTER ACCEPTANCE
+  // REQUESTER GIVES REWARD VIA PAYTM AFTER ACCEPTANCE
   // =====================================================
   const handlePaytmPayment = async () => {
     if (!unlockedPaymentRequest) return;
@@ -173,7 +180,7 @@ const SeatExchange = () => {
         paymentMethod: "PAYTM",
       });
 
-      setMessage(`✅ Paytm Payment of ₹50 Successful! (Txn ID: ${res.transactionId}). Exchange Completed!`);
+      setMessage(`✅ Reward processed successfully! (Txn ID: ${res.transactionId}). Exchange Completed!`);
       setShowPaytmModal(false);
       setUnlockedPaymentRequest(null);
 
@@ -258,6 +265,336 @@ const SeatExchange = () => {
     }
   };
 
+  // =====================================================
+  // GENERATE STRUCTURED REVIEW PACKET
+  // =====================================================
+  const handleGenerateReviewPacket = async (item) => {
+    if (!item?.id) return;
+
+    if (item.status !== "COMPLETED" && item.status !== "PAYMENT_SUCCESSFUL") {
+      setErrorMsg("Review Packet can only be generated after the seat exchange is completed.");
+      return;
+    }
+
+    try {
+      setReviewLoading(true);
+      setErrorMsg("");
+      setMessage("");
+
+      const response = await api.post(`/seat-exchange/review-packet/${item.id}`, {
+        userNotes: reviewNotes || "",
+      });
+
+      const packet = response.data?.data || response.data;
+      setReviewPacketRequest(item);
+      setReviewPacket(packet);
+      setMessage("✓ Structured Review Packet generated successfully.");
+    } catch (error) {
+      console.error("Review Packet Error:", error);
+      setErrorMsg(
+        error.response?.data?.message ||
+        "Failed to generate Review Packet."
+      );
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  // =====================================================
+  // DOWNLOAD / PRINT REVIEW PACKET
+  // Browser print dialog can be used to Save as PDF.
+  // =====================================================
+  const handleDownloadReviewPacket = () => {
+    if (!reviewPacket) return;
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const formatValue = (value) => {
+      if (Array.isArray(value)) {
+        return value.length
+          ? value.map((item) => `<li>${escapeHtml(item)}</li>`).join("")
+          : "<li>None</li>";
+      }
+
+      if (value && typeof value === "object") {
+        return Object.entries(value)
+          .map(
+            ([key, val]) =>
+              `<div class="kv"><span>${escapeHtml(key)}</span><strong>${escapeHtml(val)}</strong></div>`
+          )
+          .join("");
+      }
+
+      return escapeHtml(value === "" ? "None" : value);
+    };
+
+    const sectionHtml = (section) => {
+      const content = section?.content;
+
+      if (content && typeof content === "object" && !Array.isArray(content)) {
+        return Object.entries(content)
+          .map(([key, value]) => {
+            if (value && typeof value === "object" && !Array.isArray(value)) {
+              return `
+                <div class="sub-block">
+                  <h4>${escapeHtml(key)}</h4>
+                  ${formatValue(value)}
+                </div>
+              `;
+            }
+
+            if (Array.isArray(value)) {
+              return `
+                <div class="sub-block">
+                  <span>${escapeHtml(key)}</span>
+                  <ul>${formatValue(value)}</ul>
+                </div>
+              `;
+            }
+
+            return `
+              <div class="kv">
+                <span>${escapeHtml(key)}</span>
+                <strong>${escapeHtml(value ?? "N/A")}</strong>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      if (Array.isArray(content)) {
+        return content.length
+          ? `<ul>${formatValue(content)}</ul>`
+          : "<p>None</p>";
+      }
+
+      return `<p>${escapeHtml(content || "None")}</p>`;
+    };
+
+    const sections = reviewPacket.generatedSections || [];
+    const warnings = reviewPacket.validationWarnings || [];
+    const missing = reviewPacket.missingFields || [];
+    const summary = reviewPacket.reviewSummary || {};
+    const sample = reviewPacket.judgeReadySample || {};
+
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>RailSwap Review Packet</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 32px;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #172033;
+              background: #f4f7fb;
+            }
+            .packet {
+              max-width: 900px;
+              margin: 0 auto;
+              background: #fff;
+              border: 1px solid #dce3ef;
+              border-radius: 18px;
+              overflow: hidden;
+            }
+            .header {
+              padding: 28px 32px;
+              border-bottom: 1px solid #dce3ef;
+              background: #f8fbff;
+            }
+            .brand {
+              font-size: 13px;
+              font-weight: 800;
+              letter-spacing: 1.8px;
+              text-transform: uppercase;
+            }
+            h1 { margin: 8px 0 4px; font-size: 28px; }
+            .meta { color: #667085; font-size: 13px; }
+            .section {
+              margin: 22px 28px;
+              border: 1px solid #e1e7f0;
+              border-radius: 14px;
+              overflow: hidden;
+            }
+            .section h2 {
+              margin: 0;
+              padding: 14px 16px;
+              font-size: 16px;
+              background: #f7f9fc;
+              border-bottom: 1px solid #e1e7f0;
+            }
+            .content { padding: 16px; }
+            .kv {
+              display: flex;
+              justify-content: space-between;
+              gap: 20px;
+              padding: 9px 0;
+              border-bottom: 1px solid #edf1f6;
+            }
+            .kv:last-child { border-bottom: 0; }
+            .kv span { color: #667085; text-transform: capitalize; }
+            .kv strong { text-align: right; }
+            .sub-block {
+              margin: 10px 0;
+              padding: 10px;
+              background: #f8fafc;
+              border-radius: 10px;
+            }
+            .sub-block h4 {
+              margin: 0 0 8px;
+              text-transform: capitalize;
+            }
+            ul { margin: 8px 0 0 18px; padding: 0; }
+            li { margin: 6px 0; }
+            .status {
+              display: inline-block;
+              padding: 6px 10px;
+              border-radius: 999px;
+              background: #e9f8ef;
+              font-weight: 800;
+            }
+            .notes {
+              white-space: pre-wrap;
+              line-height: 1.6;
+              min-height: 50px;
+            }
+            .footer {
+              padding: 20px 28px 28px;
+              color: #667085;
+              font-size: 12px;
+              text-align: center;
+            }
+            @media print {
+              body { padding: 0; background: #fff; }
+              .packet { border: 0; border-radius: 0; max-width: none; }
+              .section { break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="packet">
+            <header class="header">
+              <div class="brand">RAILSWAP</div>
+              <h1>Structured Review Packet</h1>
+              <div class="meta">
+                Review Packet ID: ${escapeHtml(reviewPacket.reviewPacketId || "N/A")}<br />
+                Generated: ${escapeHtml(
+                  reviewPacket.generatedAt
+                    ? new Date(reviewPacket.generatedAt).toLocaleString()
+                    : new Date().toLocaleString()
+                )}
+              </div>
+            </header>
+
+            ${sections
+              .map(
+                (section) => `
+                  <section class="section">
+                    <h2>${escapeHtml(section.title || section.type)}</h2>
+                    <div class="content">${sectionHtml(section)}</div>
+                  </section>
+                `
+              )
+              .join("")}
+
+            <section class="section">
+              <h2>Validation Warnings</h2>
+              <div class="content">
+                ${
+                  warnings.length
+                    ? `<ul>${formatValue(warnings)}</ul>`
+                    : "<p>None</p>"
+                }
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>Missing Fields</h2>
+              <div class="content">
+                ${
+                  missing.length
+                    ? `<ul>${formatValue(missing)}</ul>`
+                    : "<p>None</p>"
+                }
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>Review Summary</h2>
+              <div class="content">
+                ${Object.entries(summary)
+                  .map(
+                    ([key, value]) => `
+                      <div class="kv">
+                        <span>${escapeHtml(key)}</span>
+                        <strong>${escapeHtml(value ?? "N/A")}</strong>
+                      </div>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>User Notes</h2>
+              <div class="content notes">${escapeHtml(
+                reviewPacket.userNotes || reviewNotes || "No notes added."
+              )}</div>
+            </section>
+
+            <section class="section">
+              <h2>Judge-Ready Sample</h2>
+              <div class="content">
+                ${Object.entries(sample)
+                  .map(
+                    ([key, value]) => `
+                      <div class="kv">
+                        <span>${escapeHtml(key)}</span>
+                        <strong>${escapeHtml(value ?? "N/A")}</strong>
+                      </div>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </section>
+
+            <div class="footer">
+              RailSwap — AI Powered Railway Seat Exchange & Smart Passenger Assistance System
+            </div>
+          </main>
+
+          <script>
+            window.onload = function () {
+              setTimeout(function () {
+                window.print();
+              }, 350);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank", "width=1000,height=800");
+
+    if (!printWindow) {
+      setErrorMsg("Please allow pop-ups in the browser to download the Review Packet.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   // Filtered Matches
   const filteredMatches = matches.filter((item) => {
     if (coachFilter !== "ALL" && item.coach?.toUpperCase() !== coachFilter.toUpperCase()) {
@@ -292,7 +629,7 @@ const SeatExchange = () => {
           </h1>
           <p>
             Post PNR ticket details, select wanted Coach & Seat number, and receive direct passenger match acceptances.
-            Paytm ₹50 payment unlocks ONLY AFTER passenger accepts your request!
+            Give Reward is available ONLY AFTER passenger accepts your request!
           </p>
         </div>
 
@@ -304,8 +641,8 @@ const SeatExchange = () => {
             <span>●</span>
           </div>
           <div className="route-label">
-            <span>POST-ACCEPTANCE PAYMENT</span>
-            <strong>Paytm ₹50 Platform Fee</strong>
+            <span>POST-ACCEPTANCE REWARD</span>
+            <strong>Give Reward</strong>
           </div>
         </div>
       </div>
@@ -402,7 +739,7 @@ const SeatExchange = () => {
                     <span className="paytm-logo">Paytm</span>
                     <div>
                       <h4>🎉 Seat Exchange Confirmed!</h4>
-                      <p>Passenger accepted your request. Paytm Payment Screen is now unlocked.</p>
+                      <p>Passenger accepted your request. Give Reward option is now unlocked.</p>
                     </div>
                   </div>
                   <button
@@ -412,7 +749,7 @@ const SeatExchange = () => {
                     }}
                     className="paytm-pay-now-btn"
                   >
-                    Pay Paytm ₹50 Now
+                    🎁 Give Reward
                   </button>
                 </div>
               )}
@@ -433,7 +770,7 @@ const SeatExchange = () => {
                 <div>
                   <span>PAYMENT</span>
                   <strong className={myRequest?.donationPaid ? "text-success" : "text-warning"}>
-                    {myRequest?.donationPaid ? "₹50 Paid ✓" : "Unlocked Post-Acceptance"}
+                    {myRequest?.donationPaid ? "Reward Given ✓" : "Unlocked Post-Acceptance"}
                   </strong>
                 </div>
               </div>
@@ -479,7 +816,7 @@ const SeatExchange = () => {
                   <div className="mini-request-card" key={item.id}>
                     <div>
                       <strong>{item.trainName}</strong> — Exchange Confirmed!
-                      <div className="badge-sub text-success font-bold">Paytm Payment Screen Unlocked!</div>
+                      <div className="badge-sub text-success font-bold">Give Reward Unlocked!</div>
                     </div>
                     <button
                       className="paytm-sm-btn"
@@ -488,7 +825,7 @@ const SeatExchange = () => {
                         setShowPaytmModal(true);
                       }}
                     >
-                      Pay Paytm ₹50
+                      🎁 Give Reward
                     </button>
                   </div>
                 ))
@@ -507,7 +844,25 @@ const SeatExchange = () => {
                       <strong>{item.passengerName}</strong> ({item.coach}-{item.seatNumber} ➔ {item.preferredSeat})
                       <div className="text-success font-bold">Exchange Completed ✓</div>
                     </div>
-                    <button className="receipt-sm-btn" onClick={() => setSelectedReceipt(item)}>Receipt</button>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <button
+                        className="receipt-sm-btn"
+                        onClick={() => setSelectedReceipt(item)}
+                      >
+                        🧾 Receipt
+                      </button>
+                      <button
+                        className="receipt-sm-btn"
+                        onClick={() => {
+                          setReviewNotes("");
+                          setReviewPacket(null);
+                          setReviewPacketRequest(item);
+                          setActiveTab("history");
+                        }}
+                      >
+                        📄 Review Packet
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -622,7 +977,7 @@ const SeatExchange = () => {
                     <strong>{r.passengerName}</strong>
                     <span>{r.coach}-{r.seatNumber} ➔ {r.preferredSeat}</span>
                     <span className="status-success">✓ {r.status}</span>
-                    <span className="amount text-success">+₹50 Escrow Reward</span>
+                    <span className="amount text-success">+ Reward Escrow</span>
                   </div>
                 ))
               )}
@@ -786,8 +1141,8 @@ const SeatExchange = () => {
       ======================================= */}
       {activeTab === "payments" && (
         <div className="match-section">
-          <h2>Paytm Payment & Transaction History</h2>
-          <p className="subtext">Logs for ₹50 post-acceptance Paytm transactions and escrow transfers.</p>
+          <h2>Reward & Transaction History</h2>
+          <p className="subtext">Logs for post-acceptance reward transactions and escrow transfers.</p>
 
           <div className="payment-table">
             <div className="payment-row header">
@@ -806,7 +1161,7 @@ const SeatExchange = () => {
               paymentHistory.map((tx) => (
                 <div className="payment-row" key={tx.id}>
                   <strong className="tx-id">{tx.transactionId}</strong>
-                  <span className="paytm-badge">Paytm Gateway</span>
+                  <span className="paytm-badge">Reward Gateway</span>
                   <span>{tx.type}</span>
                   <span className="amount">₹{tx.amount || 50}</span>
                   <span className="status-success">✓ {tx.status || "SUCCESS"}</span>
@@ -851,9 +1206,9 @@ const SeatExchange = () => {
               </div>
 
               <div className="paytm-amount-box">
-                <span>Total Amount to Pay</span>
+                <span>Reward Amount</span>
                 <h2>₹50.00</h2>
-                <small>Platform Fee & Reward Escrow</small>
+                <small>Reward & Escrow</small>
               </div>
             </div>
 
@@ -863,7 +1218,7 @@ const SeatExchange = () => {
                 onClick={handlePaytmPayment}
                 disabled={processingPaytm}
               >
-                {processingPaytm ? "Processing Paytm Payment..." : "Pay ₹50 via Paytm"}
+                {processingPaytm ? "Processing Paytm Payment..." : "🎁 Give Reward"}
               </button>
             </div>
           </div>
@@ -871,7 +1226,244 @@ const SeatExchange = () => {
       )}
 
       {/* =======================================
-          MODAL 2: OFFICIAL SEAT EXCHANGE RECEIPT
+          MODAL 2: STRUCTURED REVIEW PACKET
+      ======================================= */}
+      {reviewPacketRequest && (
+        <div className="modal-backdrop">
+          <div className="modal-card receipt-card" style={{ maxWidth: "980px", width: "96%" }}>
+            <div className="modal-header">
+              <div>
+                <h2>Structured Review Packet</h2>
+                <p className="subtext" style={{ margin: "4px 0 0" }}>
+                  Generate a complete judge-ready review packet for this completed exchange.
+                </p>
+              </div>
+              <button
+                className="close-btn"
+                onClick={() => {
+                  setReviewPacketRequest(null);
+                  setReviewPacket(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {!reviewPacket && (
+                <div style={{ marginBottom: "18px" }}>
+                  <label style={{ display: "block", fontWeight: 700, marginBottom: "8px" }}>
+                    User Notes
+                  </label>
+                  <textarea
+                    value={reviewNotes}
+                    onChange={(e) => setReviewNotes(e.target.value)}
+                    placeholder="Add reviewer notes, passenger notes, validation observations, or any important information..."
+                    rows={5}
+                    style={{
+                      width: "100%",
+                      resize: "vertical",
+                      padding: "12px",
+                      border: "1px solid #d8dee9",
+                      borderRadius: "10px",
+                      fontFamily: "inherit",
+                    }}
+                  />
+
+                  <div className="swap-details-box" style={{ marginTop: "16px" }}>
+                    <div>
+                      <span>Passenger:</span>{" "}
+                      <strong>{reviewPacketRequest.passengerName || "N/A"}</strong>
+                    </div>
+                    <div>
+                      <span>PNR:</span>{" "}
+                      <strong>{reviewPacketRequest.pnr || "N/A"}</strong>
+                    </div>
+                    <div>
+                      <span>Train:</span>{" "}
+                      <strong>
+                        {reviewPacketRequest.trainName || "N/A"} ({reviewPacketRequest.trainNumber || "N/A"})
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Status:</span>{" "}
+                      <strong>{reviewPacketRequest.status || "N/A"}</strong>
+                    </div>
+                  </div>
+
+                  <button
+                    className="paytm-confirm-btn"
+                    onClick={() => handleGenerateReviewPacket(reviewPacketRequest)}
+                    disabled={reviewLoading}
+                    style={{ marginTop: "16px", width: "100%" }}
+                  >
+                    {reviewLoading ? "Generating Review Packet..." : "📄 Generate Review Packet"}
+                  </button>
+                </div>
+              )}
+
+              {reviewPacket && (
+                <div className="printable-receipt">
+                  <div className="receipt-hero">
+                    <div className="rail-logo">📄 RAILSWAP REVIEW PACKET</div>
+                    <span>{reviewPacket.reviewPacketId || "REVIEW PACKET"}</span>
+                  </div>
+
+                  <div className="seat-transition-box">
+                    <div className="old-seat">
+                      <span>STATUS</span>
+                      <h3>{reviewPacket.status || "READY"}</h3>
+                      <small>Review Packet</small>
+                    </div>
+
+                    <div className="transition-arrow">✓</div>
+
+                    <div className="new-seat">
+                      <span>EXCHANGE</span>
+                      <h3>{reviewPacketRequest.status}</h3>
+                      <small>Completed</small>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: "12px" }}>
+                    {(reviewPacket.generatedSections || []).map((section, index) => (
+                      <div
+                        key={`${section.type}-${index}`}
+                        style={{
+                          border: "1px solid #e1e7ef",
+                          borderRadius: "12px",
+                          padding: "14px",
+                          background: "#fff",
+                        }}
+                      >
+                        <h3 style={{ margin: "0 0 10px" }}>
+                          {section.title || section.type}
+                        </h3>
+
+                        {Array.isArray(section.content) ? (
+                          section.content.length ? (
+                            <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                              {section.content.map((value, i) => (
+                                <li key={i}>{String(value)}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>None</p>
+                          )
+                        ) : section.content && typeof section.content === "object" ? (
+                          Object.entries(section.content).map(([key, value]) => (
+                            <div
+                              key={key}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: "20px",
+                                padding: "8px 0",
+                                borderBottom: "1px solid #edf1f5",
+                              }}
+                            >
+                              <span style={{ color: "#667085" }}>
+                                {key.replace(/([A-Z])/g, " $1")}
+                              </span>
+                              <strong style={{ textAlign: "right" }}>
+                                {Array.isArray(value)
+                                  ? value.join(", ") || "None"
+                                  : typeof value === "object" && value !== null
+                                  ? JSON.stringify(value)
+                                  : String(value ?? "N/A")}
+                              </strong>
+                            </div>
+                          ))
+                        ) : (
+                          <p style={{ margin: 0 }}>{String(section.content || "None")}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>Validation Warnings</h3>
+                    {(reviewPacket.validationWarnings || []).length ? (
+                      <ul>
+                        {reviewPacket.validationWarnings.map((warning, index) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>None</p>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>Missing Fields</h3>
+                    {(reviewPacket.missingFields || []).length ? (
+                      <ul>
+                        {reviewPacket.missingFields.map((field, index) => (
+                          <li key={index}>{field}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>None</p>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>Review Summary</h3>
+                    {Object.entries(reviewPacket.reviewSummary || {}).map(([key, value]) => (
+                      <div
+                        key={key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "8px 0",
+                          borderBottom: "1px solid #edf1f5",
+                        }}
+                      >
+                        <span style={{ color: "#667085" }}>
+                          {key.replace(/([A-Z])/g, " $1")}
+                        </span>
+                        <strong>{String(value ?? "N/A")}</strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: "16px" }}>
+                    <h3>User Notes</h3>
+                    <p style={{ whiteSpace: "pre-wrap" }}>
+                      {reviewPacket.userNotes || "No notes added."}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              {reviewPacket && (
+                <>
+                  <button
+                    className="confirm-pay-btn"
+                    onClick={handleDownloadReviewPacket}
+                  >
+                    ⬇ Download Review Packet
+                  </button>
+                  <button
+                    className="close-btn"
+                    onClick={() => {
+                      setReviewPacketRequest(null);
+                      setReviewPacket(null);
+                    }}
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================
+          MODAL 3: OFFICIAL SEAT EXCHANGE RECEIPT
       ======================================= */}
       {selectedReceipt && (
         <div className="modal-backdrop">

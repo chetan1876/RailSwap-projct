@@ -1,67 +1,166 @@
 const Joi = require("joi");
 
-// Create Seat Exchange Request Validation
+
+// =====================================================
+// CREATE SEAT EXCHANGE REQUEST VALIDATION
+// =====================================================
+
 const createSeatExchangeValidation = Joi.object({
-  user: Joi.string().optional().default("user123"),
 
-  passengerName: Joi.string().trim().min(2).max(50).required(),
+  user: Joi.string()
+    .optional()
+    .default("user123"),
 
-  age: Joi.number().integer().min(1).max(120).required(),
+
+  passengerName: Joi.string()
+    .trim()
+    .min(2)
+    .max(50)
+    .required(),
+
+
+  age: Joi.number()
+    .integer()
+    .min(1)
+    .max(120)
+    .required(),
+
 
   gender: Joi.string()
-    .valid("Male", "Female", "Other")
+    .valid(
+      "Male",
+      "Female",
+      "Other"
+    )
     .required(),
+
 
   pnr: Joi.string()
     .length(10)
     .required(),
 
+
   trainNumber: Joi.string()
     .required(),
+
 
   trainName: Joi.string()
     .required(),
 
+
   journeyDate: Joi.string()
     .required(),
+
 
   boardingStation: Joi.string()
     .required(),
 
+
   destinationStation: Joi.string()
     .required(),
+
 
   coach: Joi.string()
     .required(),
 
-  seatNumber: Joi.number().integer().min(1).max(120).required(),
 
-  seatType: Joi.string().required(),
+  seatNumber: Joi.number()
+    .integer()
+    .min(1)
+    .max(120)
+    .required(),
 
-  bookingStatus: Joi.string().optional().default("CNF"),
 
-  preferredCoach: Joi.string().required(),
-  preferredSeatNumber: Joi.number().integer().min(1).max(120).required(),
-  preferredSeat: Joi.string().optional().default("Any"),
+  seatType: Joi.string()
+    .required(),
 
-  sameCoachPreferred: Joi.boolean().optional().default(false),
-  sameCabinPreferred: Joi.boolean().optional().default(false),
-  medicalPriority: Joi.boolean().optional().default(false),
-  seniorCitizenPriority: Joi.boolean().optional().default(false),
-  familyPriority: Joi.boolean().optional().default(false),
 
-  pnrVerified: Joi.boolean().optional().default(true),
+  bookingStatus: Joi.string()
+    .optional()
+    .default("CNF"),
+
+
+  preferredCoach: Joi.string()
+    .required(),
+
+
+  preferredSeatNumber: Joi.number()
+    .integer()
+    .min(1)
+    .max(120)
+    .required(),
+
+
+  preferredSeat: Joi.string()
+    .optional()
+    .default("Any"),
+
+
+  sameCoachPreferred: Joi.boolean()
+    .optional()
+    .default(false),
+
+
+  sameCabinPreferred: Joi.boolean()
+    .optional()
+    .default(false),
+
+
+  medicalPriority: Joi.boolean()
+    .optional()
+    .default(false),
+
+
+  seniorCitizenPriority: Joi.boolean()
+    .optional()
+    .default(false),
+
+
+  familyPriority: Joi.boolean()
+    .optional()
+    .default(false),
+
+
+  pnrVerified: Joi.boolean()
+    .optional()
+    .default(true),
+
 });
 
-// Paytm Post-Acceptance Payment Validation
+
+// =====================================================
+// PAYTM POST-ACCEPTANCE PAYMENT VALIDATION
+// =====================================================
+
 const postAcceptancePaymentValidation = Joi.object({
-  requestId: Joi.string().required(),
-  amount: Joi.number().valid(50).required(),
-  paymentMethod: Joi.string().valid("PAYTM", "UPI", "CARD", "NET_BANKING").default("PAYTM"),
+
+  requestId: Joi.string()
+    .required(),
+
+
+  amount: Joi.number()
+    .valid(50)
+    .required(),
+
+
+  paymentMethod: Joi.string()
+    .valid(
+      "PAYTM",
+      "UPI",
+      "CARD",
+      "NET_BANKING"
+    )
+    .default("PAYTM"),
+
 });
 
-// Update Status Validation
+
+// =====================================================
+// UPDATE STATUS VALIDATION
+// =====================================================
+
 const updateStatusValidation = Joi.object({
+
   status: Joi.string()
     .valid(
       "PENDING",
@@ -73,12 +172,43 @@ const updateStatusValidation = Joi.object({
       "CANCELLED"
     )
     .required(),
-  matchedUserId: Joi.string().optional(),
+
+
+  matchedUserId: Joi.string()
+    .optional(),
+
 });
 
-module.exports = {
-  createSeatExchangeValidation,
-  postAcceptancePaymentValidation,
-  updateStatusValidation,
+
+// =====================================================
+// REVIEW PACKET REQUEST VALIDATION
+// =====================================================
+
+const reviewPacketValidation = {
+
+  params: Joi.object({
+
+    id: Joi.string()
+      .trim()
+      .required(),
+
+  }),
+
 };
-
+
+
+// =====================================================
+// EXPORT
+// =====================================================
+
+module.exports = {
+
+  createSeatExchangeValidation,
+
+  postAcceptancePaymentValidation,
+
+  updateStatusValidation,
+
+  reviewPacketValidation,
+
+};

@@ -1,65 +1,209 @@
+// ==========================================
+// Seat Exchange DTO
+// ==========================================
+
 class SeatExchangeDTO {
-  constructor(data) {
-    this.id = data.id || data._id;
+  constructor(data = {}) {
+    // ==========================================
+    // BASIC INFORMATION
+    // ==========================================
 
-    this.passengerName = data.passengerName;
-    this.age = data.age;
-    this.gender = data.gender;
+    this.id = data.id || data._id || null;
 
-    this.pnr = data.pnr;
-    this.trainNumber = data.trainNumber;
-    this.trainName = data.trainName;
 
-    this.journeyDate = data.journeyDate;
-    this.boardingStation = data.boardingStation;
-    this.destinationStation = data.destinationStation;
+    // ==========================================
+    // PASSENGER DETAILS
+    // ==========================================
 
-    this.coach = data.coach;
-    this.seatNumber = data.seatNumber;
-    this.seatType = data.seatType;
-    this.bookingStatus = data.bookingStatus || "Confirmed";
+    this.passengerName = data.passengerName || "";
+    this.age = data.age || null;
+    this.gender = data.gender || "";
 
-    this.preferredCoach = data.preferredCoach;
-    this.preferredSeatNumber = data.preferredSeatNumber;
-    this.preferredSeat = data.preferredSeat || `Coach ${data.preferredCoach} Seat ${data.preferredSeatNumber}`;
 
-    this.sameCoachPreferred = data.sameCoachPreferred || false;
-    this.sameCabinPreferred = data.sameCabinPreferred || false;
-    this.medicalPriority = data.medicalPriority || false;
-    this.seniorCitizenPriority = data.seniorCitizenPriority || false;
-    this.familyPriority = data.familyPriority || false;
+    // ==========================================
+    // JOURNEY / TRAIN DETAILS
+    // ==========================================
 
-    this.matchPercentage = data.matchPercentage || 0;
-    this.aiRecommendations = data.aiRecommendations || [];
+    this.pnr = data.pnr || "";
+    this.trainNumber = data.trainNumber || "";
+    this.trainName = data.trainName || "";
 
-    this.status = data.status || "PENDING";
-    this.paymentUnlocked = data.paymentUnlocked || false;
+    this.journeyDate = data.journeyDate || "";
+    this.boardingStation = data.boardingStation || "";
+    this.destinationStation = data.destinationStation || "";
 
-    this.donationPaid = data.donationPaid || false;
-    this.donationAmount = data.donationAmount || 50;
-    this.transactionId = data.transactionId || null;
-    this.paymentStatus = data.paymentStatus || "NOT_REQUIRED";
-    this.paymentProvider = data.paymentProvider || "PAYTM";
 
-    this.user = data.user;
-    this.matchedUser = data.matchedUser;
+    // ==========================================
+    // CURRENT SEAT DETAILS
+    // ==========================================
 
-    this.createdAt = data.createdAt;
-    this.updatedAt = data.updatedAt;
+    this.coach = data.coach || "";
+    this.seatNumber = data.seatNumber || null;
+    this.seatType = data.seatType || "";
+
+    this.bookingStatus =
+      data.bookingStatus || "Confirmed";
+
+
+    // ==========================================
+    // PREFERRED SEAT DETAILS
+    // ==========================================
+
+    this.preferredCoach =
+      data.preferredCoach || "";
+
+    this.preferredSeatNumber =
+      data.preferredSeatNumber || null;
+
+    this.preferredSeat =
+      data.preferredSeat ||
+      (
+        data.preferredCoach && data.preferredSeatNumber
+          ? `Coach ${data.preferredCoach} Seat ${data.preferredSeatNumber}`
+          : "Any"
+      );
+
+
+    // ==========================================
+    // SEAT PREFERENCE FLAGS
+    // ==========================================
+
+    this.sameCoachPreferred =
+      data.sameCoachPreferred || false;
+
+    this.sameCabinPreferred =
+      data.sameCabinPreferred || false;
+
+    this.medicalPriority =
+      data.medicalPriority || false;
+
+    this.seniorCitizenPriority =
+      data.seniorCitizenPriority || false;
+
+    this.familyPriority =
+      data.familyPriority || false;
+
+
+    // ==========================================
+    // AI MATCHING
+    // ==========================================
+
+    this.matchPercentage =
+      data.matchPercentage || 0;
+
+    this.aiRecommendations =
+      Array.isArray(data.aiRecommendations)
+        ? data.aiRecommendations
+        : [];
+
+
+    // ==========================================
+    // REQUEST STATUS
+    // ==========================================
+
+    this.status =
+      data.status || "PENDING";
+
+    this.paymentUnlocked =
+      data.paymentUnlocked || false;
+
+
+    // ==========================================
+    // PAYMENT DETAILS
+    // ==========================================
+
+    this.donationPaid =
+      data.donationPaid || false;
+
+    this.donationAmount =
+      data.donationAmount ?? 50;
+
+    this.transactionId =
+      data.transactionId || null;
+
+    this.paymentStatus =
+      data.paymentStatus || "NOT_REQUIRED";
+
+    this.paymentProvider =
+      data.paymentProvider || "PAYTM";
+
+
+    // ==========================================
+    // USER / MATCHED USER
+    // ==========================================
+
+    this.user =
+      data.user || null;
+
+    this.matchedUser =
+      data.matchedUser || null;
+
+
+    // ==========================================
+    // TIMESTAMPS
+    // ==========================================
+
+    this.createdAt =
+      data.createdAt || null;
+
+    this.updatedAt =
+      data.updatedAt || null;
+
+
+    // ==========================================
+    // REVIEW PACKET DATA
+    // ==========================================
+
+    // User notes for the structured review packet
+    this.userNotes =
+      data.userNotes ||
+      data.notes ||
+      "";
+
+
+    // Optional review tag
+    this.reviewTag =
+      data.reviewTag || "";
+
+
+    // Review packet generation status
+    this.reviewPacketStatus =
+      data.reviewPacketStatus || null;
+
+
+    // Review packet ID
+    this.reviewPacketId =
+      data.reviewPacketId || null;
   }
 }
+
+
+// ==========================================
+// SINGLE DTO
+// ==========================================
 
 const seatExchangeDTO = (data) => {
   return new SeatExchangeDTO(data);
 };
 
+
+// ==========================================
+// DTO LIST
+// ==========================================
+
 const seatExchangeDTOList = (data = []) => {
-  return data.map((item) => new SeatExchangeDTO(item));
+  return data.map(
+    (item) => new SeatExchangeDTO(item)
+  );
 };
+
+
+// ==========================================
+// EXPORT
+// ==========================================
 
 module.exports = {
   SeatExchangeDTO,
   seatExchangeDTO,
   seatExchangeDTOList,
 };
-
